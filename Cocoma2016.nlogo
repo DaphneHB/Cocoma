@@ -1,10 +1,16 @@
 breed [waypoints waypoint]
 breed [envconstructors envconstructor]
 breed [convois convoi]
+breed [ennemies ennemy]
+breed [drones drone]
+breed [bullets bullet]
 breed [HQs HQ]
+
 directed-link-breed [path-links path-link]
 undirected-link-breed [dummy-links dummy-link]
 directed-link-breed [convoi-links convoi-link]
+
+;; threedshapes [ "default" "circle" "dot" "square" "triangle" "cylinder" "line" "line half" "car" ]
 
 globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: definit le niveau ou se trouvent toutes les informations de la carte (obstacles base etc.) car en 2D, niveau au sol ou se trouvent les agents, niveau basse altitude et niveau haute altitude
   base-patches base-entry base-central ; precache: definit ou se trouvent les patchs de la base d'atterrissage, le patch d'entree sur la piste d'atterrissage, et le patch ou doivent s'arreter les drones pour se recharger. Permet d'evaluer rapidement la distance et les besoins des drones (quand ils doivent rentrer a la base)
@@ -27,8 +33,26 @@ convois-own[incoming-queue
   dead?
   speed maxdir ; maximal speed of a car, and max angle
   last-send-time ; communication historical time-stamp
+  pv
   ]
-
+drones-own [
+  speed
+  carburant
+  munitions
+  pv
+]
+ennemies-own [
+  speed
+  to-follow
+  carburant
+  munitions
+  pv
+]
+bullets-own [
+  speed
+  power
+  energy
+]
 
 ;***********************
 ;         SETUP
@@ -56,12 +80,15 @@ to setup
     ]
   ]
   if not debug and not debug-verbose [no-display]
-  ;setup-drones
-  ;setup-enemies
   ;setup-citizens
 ;  setup-hq
 
   setup-precache
+  setup-drones
+  setup-ennemies
+  ; on définit la forme d'une balle (bullet)
+  set-default-shape bullets "dot"
+
   display ; reenable gui display
   reset-ticks
 end
@@ -94,6 +121,29 @@ to setup-precache
   set base-central min-one-of (base-patches with-min [pxcor]) [pycor]
 end
 
+to setup-ennemies
+  create-ennemies nb-ennemies
+  let good-patches n-of nb-ennemies patches with [(pcolor < (green + 2) or pcolor > (green - 2)) and not any? other turtles-here]
+  ask ennemies [
+    set shape "square"
+    set speed 0.05 * e-speed * simu-speed
+    set carburant 100
+    let good-patch one-of good-patches
+    move-to good-patch
+    ;setxyz random-xcor random-ycor mapAlt;( min-pycor + 1 ) random-zcor
+    set color red
+    ]
+end
+
+to setup-drones
+  create-drones nb-drones
+  ask drones [
+    set shape "triangle"
+    set speed 0.05 * e-speed * simu-speed
+    setxyz random-xcor random-ycor hauteAlt;( min-pycor + 1 ) random-zcor
+    set color grey
+    ]
+end
 
 ;environment definition
 to setup-env
@@ -158,11 +208,11 @@ to setup-env
   ask one-of patches with[obstacle? = false and base? = false and hangar? = false and pxcor >= (max-pxcor / 2) and pycor >= (max-pycor / 2) and pzcor = mapAlt][set objectif? true ask patch-at 0 0 2 [set pcolor yellow]]
 
   ; Hangar (la ou les voitures du convois demarrent)
-  ask patches with[pzcor = mapAlt and pxcor >= 5 and pxcor < 7 and pycor >= 0 and pycor < 12][set pcolor 8 set hangar? true set obstacle? false]
+  ask patches with[pzcor = mapAlt and pxcor >= 5 and pxcor < 7 and pycor >= 0 and pycor < 12][set pcolor 8 set hangar? true set obstacle? true]
 
   ; Base de decollage et atterrissage pour les drones
-  ask patches with[pzcor = mapAlt and pxcor >= 3 and pxcor < 5 and pycor >= 0 and pycor < 12][set pcolor 1 set base? true set hangar? false set obstacle? false] ; piste verticale
-  ask patches with[pzcor = mapAlt and pycor = 0 and pxcor >= 0 and pxcor < 18][set pcolor 1 set base? true set hangar? false set obstacle? false] ; piste horizontale
+  ask patches with[pzcor = mapAlt and pxcor >= 3 and pxcor < 5 and pycor >= 0 and pycor < 12][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste verticale
+  ask patches with[pzcor = mapAlt and pycor = 0 and pxcor >= 0 and pxcor < 18][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste horizontale
   ; Batiment (pour faire joli, ne sert a rien fonctionnellement)
   ask patches with[pzcor <= solAlt and pxcor >= 0 and pxcor < 3 and pycor >= 0 and pycor < 5][set pcolor 3 set obstacle? true set base? false set hangar? false] ; Batiment
   ask patches with [pzcor < 5 and pxcor = 0 and pycor = 0 and pzcor > 0 ] [ set pcolor 3 set obstacle? true set base? false set hangar? false] ; Antenne
@@ -254,6 +304,14 @@ end
 ;------------------------------------------------------------
 ;------------- functions ------------------------------------
 ;------------------------------------------------------------
+
+to random-walk
+  if (not detect-obstacle)
+  [forward speed]
+  ifelse (random 3 < 2)
+  [rt random 20]
+  [lt random 20]
+end
 
 ; Plannification AStar d'un patch start vers un patch goal
 ; Note: si l'heuristique est consistante/monotone (comme distance euclidienne/vol d'oiseau), h = 0 revient a faire Djikstra
@@ -491,7 +549,8 @@ to convois-think
 end
 
 to-report detect-obstacle
- if any? other patches in-cone 10 60 with [obstacle?] [report true]
+ if any? other patches in-cone 1 120 with [obstacle?] [report true]
+; if any? other patches in-cone 10 60 with [obstacle?] [report true]
 ; if any? other patches in-cone 10 90 [report true]
 ; if any? other patches in-cone 3 270 [report true]
  report false
@@ -569,14 +628,111 @@ to move-convoi [goal slowdown? cortege?]
   fd tmp-speed ; Avance
 end
 
-
-to go-car
-  convois-think
+to go
+  go-cars
+  go-ennemies
+  go-drones
+  bullets-fire
   tick
 end
 
+to-report randome-val [min-val max-val]
+  let sign 1
+  if (random 1 = 1 ) [set sign -1 ]
+  let rnd (random (max-val - min-val) + min-val) * sign
+  report rnd
+end
+
+to go-cars
+  convois-think
+end
+
+
+;-----------
+;  ENNEMIES
+;-----------
+;;; Pour gérer le déplacement des ennemies
+to go-ennemies
+  ask ennemies [
+    ;;
+    let nearest-convoi one-of convois in-radius e-vision
+    ifelse (any? convois in-radius e-vision)
+    [set color blue
+      attack-convoi nearest-convoi]
+    [set color red
+      ;set to-follow nobody
+      random-walk]
+
+    ;right random 90
+    ;;; Si l'agent n'a plus de carburant il marche
+    ;ifelse carburant > 0
+    ;[ forward ( random speed + 1 )]
+    ;[ forward ((random speed + 1 )/ 2) ]
+  ]
+end
+
+to attack-convoi [nearest]
+  set heading towards nearest
+  if (any? convois in-radius e-dist-tir)
+  [set color yellow
+    hatch-bullets 1 [
+      set speed 0.05 * simu-speed
+      set color black
+      set energy (e-dist-tir * 5)]
+  ]
+end
+
+;-----------
+;  BULLETS
+;-----------
+
+to bullets-fire
+  ask bullets [
+    ifelse ((any? convois-here) or ([pcolor] of patch-ahead 1 = black) or (energy = 0))
+    [die]
+    [forward speed
+      set energy (energy - 1)]
+  ]
+end
+
+;-----------
+;  DRONES
+;-----------
+
+to go-drones
+
+end
+
+
+;-----------
+;  DISPERSION
+;-----------
+
 to set-leadership
 
+end
+
+;-----------
+;  WATCH
+;-----------
+
+to follow-convoi
+  reset-view
+  follow one-of convois
+end
+
+to follow-drone
+  reset-view
+  follow one-of drones
+end
+
+to follow-ennemy
+    reset-view
+    follow one-of ennemies
+end
+
+to reset-view
+  reset-perspective
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -641,10 +797,10 @@ Environnement \n
 1
 
 INPUTBOX
-20
-55
-70
-115
+10
+52
+60
+112
 nb-cars
 5
 1
@@ -669,21 +825,21 @@ NIL
 1
 
 INPUTBOX
-81
-55
-159
-115
+63
+52
+141
+112
 nb-mountains
-3
+0
 1
 0
 Number
 
 INPUTBOX
-162
-55
-214
-115
+144
+52
+196
+112
 nb-lakes
 2
 1
@@ -691,10 +847,10 @@ nb-lakes
 Number
 
 INPUTBOX
-218
-55
-271
-115
+200
+52
+253
+112
 nb-rivers
 2
 1
@@ -702,10 +858,10 @@ nb-rivers
 Number
 
 INPUTBOX
-663
-185
-824
-245
+678
+59
+839
+119
 astar-faster
 20
 1
@@ -713,10 +869,10 @@ astar-faster
 Number
 
 INPUTBOX
-663
-259
-824
-319
+678
+133
+839
+193
 astar-max-depth
 10000
 1
@@ -724,32 +880,32 @@ astar-max-depth
 Number
 
 SWITCH
-471
-183
-635
-216
+486
+57
+650
+90
 astar-longpath
 astar-longpath
-0
+1
 1
 -1000
 
 SWITCH
-471
+486
+101
+649
+134
+astar-randpath
+astar-randpath
+1
+1
+-1000
+
+SWITCH
+483
+194
+645
 227
-634
-260
-astar-randpath
-astar-randpath
-1
-1
--1000
-
-SWITCH
-468
-320
-630
-353
 astar-visu-more
 astar-visu-more
 1
@@ -757,10 +913,10 @@ astar-visu-more
 -1000
 
 SWITCH
-469
-272
-632
-305
+484
+146
+647
+179
 astar-visu
 astar-visu
 0
@@ -803,10 +959,10 @@ Simulation
 1
 
 TEXTBOX
-461
-154
-611
-172
+476
+28
+626
+46
 A*
 12
 0.0
@@ -818,7 +974,7 @@ BUTTON
 189
 415
 NIL
-go-car
+go
 T
 1
 T
@@ -847,35 +1003,35 @@ NIL
 1
 
 TEXTBOX
-457
-394
-607
-412
+474
+261
+624
+279
 Ennemies
 12
 0.0
 1
 
 INPUTBOX
-275
-56
-353
-116
+257
+53
+335
+113
 nb-ennemies
-5
+50
 1
 0
 Number
 
 SLIDER
-457
-422
-629
-455
+474
+289
+646
+322
 e-life
 e-life
-10
-100
+5
+50
 25
 5
 1
@@ -883,58 +1039,207 @@ NIL
 HORIZONTAL
 
 SLIDER
-458
-468
-630
-501
+475
+335
+647
+368
 e-vision
 e-vision
-5
-100
-50
-5
+1
+25
+7
+1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-460
-518
-632
-551
+477
+385
+649
+418
 e-dist-tir
 e-dist-tir
-5
-100
-50
-5
+1
+20
+20
+1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-459
-570
-631
-603
+476
+437
+648
+470
 e-speed
 e-speed
+0
 5
-100
-50
-1
+2
+0.5
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-661
-394
-811
-412
+678
+261
+828
+279
 Drones
 12
 0.0
+1
+
+SLIDER
+673
+438
+845
+471
+d-speed
+d-speed
+0
+5
+3
+0.5
+1
+NIL
+HORIZONTAL
+
+SLIDER
+675
+288
+847
+321
+d-life
+d-life
+0
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+672
+385
+844
+418
+d-dist-tir
+d-dist-tir
+0
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+672
+334
+844
+367
+d-vision
+d-vision
+0
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+339
+53
+396
+113
+nb-drones
+20
+1
+0
+Number
+
+BUTTON
+257
+179
+380
+212
+NIL
+follow-convoi\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+246
+156
+396
+174
+Watch
+12
+0.0
+1
+
+BUTTON
+258
+231
+383
+264
+NIL
+follow-drone
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+258
+283
+384
+316
+NIL
+follow-ennemy
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+257
+341
+386
+374
+NIL
+reset-view
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
 1
 
 @#$#@#$#@
@@ -1280,7 +1585,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 3D 5.3
+NetLogo 3D 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
