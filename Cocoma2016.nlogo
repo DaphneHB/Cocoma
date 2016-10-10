@@ -36,6 +36,7 @@ convois-own[incoming-queue
   pv
   ]
 drones-own [
+<<<<<<< HEAD
   freq-tir
   speed
   leader?
@@ -43,11 +44,17 @@ drones-own [
   munitions
   finished?
   dead?
+=======
+  speed
+  carburant
+  munitions
+>>>>>>> origin/master
   pv
 ]
 ennemies-own [
   speed
   to-follow
+<<<<<<< HEAD
   dead?
   carburant
   munitions
@@ -60,6 +67,16 @@ bullets-own [
   power ; TODO useful?
   energy ; distance maximale de propagation d'une balle (correspond à la distance de tir du tireur)
   ;;energy : dommages réalisés à la cible, plus la cible est proche plus les dommages sont grands
+=======
+  carburant
+  munitions
+  pv
+]
+bullets-own [
+  speed
+  power
+  energy
+>>>>>>> origin/master
 ]
 
 ;***********************
@@ -95,7 +112,11 @@ to setup
   setup-drones
   setup-ennemies
   ; on définit la forme d'une balle (bullet)
+<<<<<<< HEAD
   set-default-shape bullets "arrow 3"
+=======
+  set-default-shape bullets "dot"
+>>>>>>> origin/master
 
   display ; reenable gui display
   reset-ticks
@@ -129,6 +150,33 @@ to setup-precache
   set base-central min-one-of (base-patches with-min [pxcor]) [pycor]
 end
 
+<<<<<<< HEAD
+=======
+to setup-ennemies
+  create-ennemies nb-ennemies
+  let good-patches n-of nb-ennemies patches with [(pcolor < (green + 2) or pcolor > (green - 2)) and not any? other turtles-here]
+  ask ennemies [
+    set shape "square"
+    set speed 0.05 * e-speed * simu-speed
+    set carburant 100
+    let good-patch one-of good-patches
+    move-to good-patch
+    ;setxyz random-xcor random-ycor mapAlt;( min-pycor + 1 ) random-zcor
+    set color red
+    ]
+end
+
+to setup-drones
+  create-drones nb-drones
+  ask drones [
+    set shape "triangle"
+    set speed 0.05 * e-speed * simu-speed
+    setxyz random-xcor random-ycor hauteAlt;( min-pycor + 1 ) random-zcor
+    set color grey
+    ]
+end
+
+>>>>>>> origin/master
 ;environment definition
 to setup-env
   ask patches [set obstacle? false set base? false set hangar? false set objectif? false set bridge? false]
@@ -196,7 +244,11 @@ to setup-env
 
   ; Base de decollage et atterrissage pour les drones
   ask patches with[pzcor = mapAlt and pxcor >= 3 and pxcor < 5 and pycor >= 0 and pycor < 12][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste verticale
+<<<<<<< HEAD
   ;ask patches with[pzcor = mapAlt and pycor = 0 and pxcor >= 0 and pxcor < 18][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste horizontale
+=======
+  ask patches with[pzcor = mapAlt and pycor = 0 and pxcor >= 0 and pxcor < 18][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste horizontale
+>>>>>>> origin/master
   ; Batiment (pour faire joli, ne sert a rien fonctionnellement)
   ask patches with[pzcor <= solAlt and pxcor >= 0 and pxcor < 3 and pycor >= 0 and pycor < 5][set pcolor 3 set obstacle? true set base? false set hangar? false] ; Batiment
   ask patches with [pzcor < 5 and pxcor = 0 and pycor = 0 and pzcor > 0 ] [ set pcolor 3 set obstacle? true set base? false set hangar? false] ; Antenne
@@ -720,6 +772,24 @@ to move-convoi [goal slowdown? cortege?]
   fd tmp-speed ; Avance
 end
 
+<<<<<<< HEAD
+=======
+to go
+  go-cars
+  go-ennemies
+  go-drones
+  bullets-fire
+  tick
+end
+
+to-report randome-val [min-val max-val]
+  let sign 1
+  if (random 1 = 1 ) [set sign -1 ]
+  let rnd (random (max-val - min-val) + min-val) * sign
+  report rnd
+end
+
+>>>>>>> origin/master
 to go-cars
   convois-think
 end
@@ -752,6 +822,7 @@ to attack-convoi [nearest]
   set heading towards nearest
   if (any? convois in-radius e-dist-tir)
   [set color yellow
+<<<<<<< HEAD
     ifelse (freq-tir = 0) [
       hatch-bullets 1 [
         set speed 0.05 * simu-speed
@@ -761,6 +832,12 @@ to attack-convoi [nearest]
       set freq-tir e-frequence-tir * e-dist-tir
     ]
     [set freq-tir (freq-tir - 1)]
+=======
+    hatch-bullets 1 [
+      set speed 0.05 * simu-speed
+      set color black
+      set energy (e-dist-tir * 5)]
+>>>>>>> origin/master
   ]
 end
 
@@ -782,10 +859,14 @@ end
 ;-----------
 
 to go-drones
+<<<<<<< HEAD
   let lead-conv one-of convois with [leader?]
   ask drones [
     move-to lead-conv
   ]
+=======
+
+>>>>>>> origin/master
 end
 
 
@@ -1132,7 +1213,11 @@ e-vision
 e-vision
 1
 25
+<<<<<<< HEAD
 21
+=======
+7
+>>>>>>> origin/master
 1
 1
 NIL
@@ -1145,9 +1230,15 @@ SLIDER
 418
 e-dist-tir
 e-dist-tir
+<<<<<<< HEAD
 2
 20
 19
+=======
+1
+20
+20
+>>>>>>> origin/master
 1
 1
 NIL
@@ -1244,7 +1335,11 @@ INPUTBOX
 396
 113
 nb-drones
+<<<<<<< HEAD
 10
+=======
+20
+>>>>>>> origin/master
 1
 0
 Number
@@ -1327,6 +1422,7 @@ NIL
 NIL
 1
 
+<<<<<<< HEAD
 SLIDER
 475
 485
@@ -1342,6 +1438,8 @@ e-frequence-tir
 NIL
 HORIZONTAL
 
+=======
+>>>>>>> origin/master
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -1690,7 +1788,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 3D 5.3
+NetLogo 3D 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
