@@ -80,7 +80,7 @@ to setup
     ifelse nb-cars <= 0 [
       set path-is-possible? true
     ]
-    ; generate a path and check is the convoi can reach its destination. If not, generate a new env
+    ; generate a path and check if the convoi can reach its destination. If not, generate a new env
     [
       let start-path (plan-astar ([[patch-at 0 0 (pzcor * -1)] of patch-here] of one-of convois with [leader?]) (one-of patches with [objectif?]) false)
       set as-path replace-item 0 as-path start-path
@@ -137,10 +137,31 @@ to setup-env
   ask patches with [pzcor = mapAlt][set pcolor green + (random-float 2) - 1]
 
   ; Montagnes ; TODO
+  ;ask patches with [pzcor = random hauteAlt] [set pcolor gray + (random-float 2) - 1]
   ;ask patches with[pzcor <= solAlt and pxcor >= 0 and pxcor < 3 and pycor >= 0 and pycor < 5][set obstacle? true set base? false set hangar? false set montagne? true] ; Batiment
   ;ask patches with [pzcor < 5 and pxcor = 0 and pycor = 0 and pzcor > 0 ] [set obstacle? true set base? false set hangar? false set montagne? true] ; Antenne
   ;ask patches with [montagne?][set pcolor gray + (random-float 2) - 1]
+  if nb-mountains > 0 [
+    repeat nb-mountains [
+      ; A builder will move and create a mountain at each step
+      create-envconstructors 1 [
+        ifelse random-float 1 <= 0.5
+          [set zcor hauteAlt]
+          [set zcor basseAlt]
+        ; random deploy on the left side or on the bottom one
+        set xcor [pxcor] of (one-of patches with [not obstacle? and pzcor = solAlt and (pxcor >= 15 or pycor >= 15)])
+        set ycor [pycor] of (one-of patches with [not obstacle? and pzcor = solAlt])
+        set pitch 270
+        set roll 0
+        set heading 0
 
+        ; Tag of the first case
+        ;ask patch-here [set pcolor (gray + (random-float 2) - 1) set obstacle? true set montagne? true]
+        ask patches in-cone (pzcor - mapAlt) 60 [set pcolor (gray + (random-float 2) - 1) set obstacle? true set montagne? true]
+        die
+      ]
+    ]
+  ]
   ; Rivieres
   if nb-rivers > 0 [
     repeat nb-rivers [
@@ -191,7 +212,7 @@ to setup-env
   if nb-lakes > 0 [ ask n-of nb-lakes patches with [pzcor = mapAlt and pxcor > 7 and pycor > 7] [ask patches with [distance-nowrap myself < 4 and pzcor = mapAlt] [set pcolor blue set obstacle? true]] ]
 
   ; Objectif
-  ask one-of patches with[obstacle? = false and base? = false and hangar? = false and pxcor >= (max-pxcor / 2) and pycor >= (max-pycor / 2) and pzcor = mapAlt][set objectif? true ask patch-at 0 0 solAlt [set pcolor yellow]]
+  ask one-of patches with[obstacle? = false and base? = false and hangar? = false and pxcor >= (max-pxcor / 2) and pycor >= (max-pycor / 2) and pzcor = mapAlt][set objectif? true ask patch-at 0 0 mapAlt [set pcolor yellow]]
 
   ; Hangar (la ou les voitures du convois demarrent)
   ask patches with[pzcor = mapAlt and pxcor >= 5 and pxcor < 7 and pycor >= 0 and pycor < 12][set pcolor 8 set hangar? true set obstacle? true]
@@ -205,7 +226,7 @@ to setup-env
 
 
   ;;; Emurrer la map ; TODO
-  ask patches with [pxcor = min-pxcor or pycor = min-pycor or pxcor = max-pxcor or pycor = max-pycor] [set obstacle? true]
+  ask patches with [(pxcor = min-pxcor) or (pycor = min-pycor) or (pxcor = max-pxcor) or (pycor = max-pycor)] [set obstacle? true]
 
   ; Copie des obstacles: on s'assure que les patchs au niveau solAlt ont la meme valeur obstacle? que leur patch en-dessous au niveau mapAlt (assure que enemy-random-move fonctionne bien et facilite la detection des obstacles car pas besoin de regarder au niveau mapAlt mais directement dans les patchs solAlt)
   ask patches with [[obstacle?] of patch-at 0 0 -1] [set obstacle? true]
@@ -368,7 +389,7 @@ end
 to setup-ennemies
   create-ennemies nb-ennemies
   ; on récupere tous les patch qui ne sont pas des obstacles donc ponts et vert
-  let good-patches n-of nb-ennemies patches with [not obstacle? and not any? other turtles-here] ;(pcolor < (green + 2) or pcolor > (green - 2))
+  let good-patches n-of nb-ennemies patches with [pzcor = solAlt and not obstacle? and not any? other turtles-here] ;(pcolor < (green + 2) or pcolor > (green - 2))
   ask ennemies [
     set shape "square"
     ; on leur donne la meme fct de vitesse que le convoi avec des parametres differents
@@ -761,14 +782,13 @@ to attack-convoi [nearest]
     ifelse (freq-tir = 0) [
       hatch-bullets 1 [
         set speed 0.05 * simu-speed
-        set color red
         set energy (e-dist-tir * 20) ; TODO calcul a déterminer
       ]
       set freq-tir e-frequence-tir * e-dist-tir
     ]
     [set freq-tir (freq-tir - 1)]
   ]
-  [fd speed] ; ils vont a l'encontre du convoi qu'ils on vu
+  [if not detect-obstacle [fd speed]] ; ils vont a l'encontre du convoi qu'ils on vu
 end
 
 ;-----------
@@ -777,7 +797,7 @@ end
 
 to bullets-fire
   ask bullets [
-    ifelse ((any? convois-here) or ([pcolor] of patch-ahead 1 = black) or (energy = 0))
+    ifelse ((any? convois-here) or (energy = 0))
     [die]
     [forward speed
       set energy (energy - 1)]
@@ -922,7 +942,7 @@ INPUTBOX
 141
 112
 nb-mountains
-0
+200
 1
 0
 Number
