@@ -1,4 +1,4 @@
-__includes [ "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls"]
+__includes [ "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls" "environment.nls" "functions.nls"]
 
 
 breed [waypoints waypoint]
@@ -25,10 +25,12 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
   mission-completed? mission-failed?
   send-interval ; communication period
   is-movie-recording?
+  ray-zone-ennemy
 ]
 
-patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map?; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
+patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? ; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
   as-closed as-heuristic as-prev-pos ; variables temporaires pour calculer les chemins AStar (effaces a chaque calcul de plan)
+  zone-ennemies ; pour définir s'il s'agit d'une zone ennemie,  ie contenant un ennemie dans un rayon de 5 (0: non-ennemie; >0 : enregistrée comme zone-ennemie pour encore X temps ou X est la valeur de la variable)
   ]
 
 convois-own[incoming-queue
@@ -118,6 +120,7 @@ end
 
 ; Initial parameters
 to setup-globals
+  set ray-zone-ennemy 5
   set mapAlt 0
   set solAlt 1
   set basseAlt (floor max-pzcor / 3 * 2 - 1)
@@ -268,6 +271,7 @@ to go
   go-ennemies
   go-drones
   bullets-fire
+  update-patches
   tick
 end
 
@@ -600,7 +604,7 @@ INPUTBOX
 141
 112
 nb-mountains
-30
+3
 1
 0
 Number
@@ -1477,7 +1481,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 3D 5.3.1
+NetLogo 3D 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

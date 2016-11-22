@@ -1,0 +1,10 @@
+;;;;;;;;;;;;;;;;;;;;;
+;; USEFUL FUNCTIONS
+;;;;;;;;;;;;;;;;;;;;;
+
+;;; Retourne tous les élements ds le radius de la case en from, dans un rayon de dist
+; from est un patch
+; dist est un nombre distance
+to-report our-in-radius [from dist]
+  ; TODO
+end

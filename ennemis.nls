@@ -33,16 +33,16 @@ to go-ennemies
   ask ennemies [
     if (pv > 0)[
       ;;
-      ;let nearest-convoi detect-convoi 360 e-vision ;min-one-of convois in-radius-nowrap e-vision [distance-nowrap myself]
+      let nearest-convoi detect-convoi e-vision ;min-one-of convois in-radius-nowrap e-vision [distance-nowrap myself]
       ;let nearest min-one-of convois with [zcor = solAlt] in-radius-nowrap e-vision [distance-nowrap myself]
-      ;let nearest-drone min-one-of drones with [zcor > solAlt and zcor < max-pzcor] in-radius-nowrap e-vision [distance-nowrap myself]
+      let nearest-drone min-one-of drones with [zcor > solAlt and zcor < max-pzcor] in-radius-nowrap e-vision [distance-nowrap myself]
       
-      let nearest detect-convoi e-vision
-      ifelse (nearest != nobody )[ ;or nearest-drone != nobody)[
+      ;let nearest detect-convoi-or-drone e-vision
+      ifelse (nearest-convoi != nobody or nearest-drone != nobody)[
         set color blue
-        ;ifelse (nearest-drone != nobody)[
-          attack-convoi-or-drone nearest ; ]
-        ;[attack-convoi-or-drone nearest-convoi]
+        ifelse (nearest-drone != nobody)
+        [ attack-convoi-or-drone nearest-drone ]
+        [ attack-convoi-or-drone nearest-convoi ]
       ]
       [
         set color red
@@ -84,7 +84,7 @@ end
 ;;; INUTILISEE
 ;;; Renvoie True si un obstacle se trouve sur le chemin de moi vers pdir
 ; False sinon
-to-report detect-obstacle-path [pdir]
+to-report detect-obstacle-path [ pdir]
   let cpt 1
   while [cpt <= pdir] [
     if ([montagne?] of patch-ahead cpt = true and [mur-map?] of patch-ahead cpt = true)
@@ -140,14 +140,16 @@ to-report detect-convoi0 [angle dist]
   report nobody
 end
 
+
+;;; USED
 to-report detect-convoi [dist]
-  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue avec l'angle attendu
+  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue
   ;;;; on inspecte tous les patches sur une distance pour un angle donné
   let cpt 1
   let angle 360 ; on verifie toujours tout autour
+  let cases-visitees []
   ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
   let angles-impossibles []
-  let cases-visitees []
   ;; on avance en augmentant le rayon de verification
   while [cpt <= dist] [
     ; on teste pour angle/2 à gauche (donc -angle/2) et angle/2 à gauche
@@ -188,12 +190,12 @@ end
 ; donnant la priorité au drone
 ; Renvoie nobody sinon
 to-report detect-convoi-or-drone0 [dist]
-   ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue avec l'angle attendu
+  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue avec l'angle attendu
   ;;;; on inspecte tous les patches sur une distance pour un angle donné
   let cpt 1
   let zcpt solAlt
   let angle 360 ; on verifie toujours tout autour
-  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
+                ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
   let angles-impossibles []
   let cases-visitees []
   ;; on avance en augmentant le rayon de verification
@@ -243,32 +245,49 @@ to-report detect-convoi-or-drone [dist]
     let xmax pxcor + cpt
     let ymin pycor - cpt
     let ymax pycor + cpt
+    let zmin solAlt
+    let zmax max-pzcor
     
-    let xcpt xmin
-    ; pour chaque x entre xmax et xmin
-    while [xcpt <= xmax]
+    let zcpt zmin
+    while [zcpt <= zmax]
     [
-      let ycpt ymin
-      ; pour chaque y entre ymin et ymax
-      while [ycpt <= ymax]
+      let xcpt xmin
+      ; pour chaque x entre xmax et xmin
+      while [xcpt <= xmax]
       [
-        ; si la case fait partie des bordures
-        ; alors on la considère
-        if (xcpt = xmin or xcpt = xmax or ycpt = ymin or ycpt = ymax)
+        let ycpt ymin
+        ; pour chaque y entre ymin et ymax
+        while [ycpt <= ymax]
         [
-          let patch-au-loin patch xcpt ycpt solAlt
-          ; on verifie s'il s'agit d'un obstacle
-          ifelse ([obstacle?] of patch-au-loin = true)
-          [ set cases-impossibles lput (list xcpt ycpt) cases-impossibles ] ; on enregistre l'obstacle
-          [; on verifie si un turtle convoi se trouve sur la case
-            let convois-on-patch convois-on patch-au-loin
-            if (any? convois-on-patch)
-            [report one-of convois-on-patch]
+          ; si la case fait partie des bordures
+          ; alors on la considère
+          if (xcpt = xmin or xcpt = xmax or ycpt = ymin or ycpt = ymax)
+          [
+            let patch-au-loin patch xcpt ycpt zcpt
+            ; on verifie s'il s'agit d'un obstacle
+            ifelse ([obstacle?] of patch-au-loin = true)
+            [ set cases-impossibles lput (list xcpt ycpt) cases-impossibles ] ; on enregistre l'obstacle
+            [; on verifie si un turtle convoi se trouve sur la case
+              ifelse (zcpt = solAlt)
+              [
+              let convois-on-patch convois-on patch-au-loin
+              if (any? convois-on-patch)
+              [report one-of convois-on-patch]
+              ]
+              [
+              let drones-on-patch drones-on patch-au-loin
+              if (any? drones-on-patch)
+              [report one-of drones-on-patch]
+                
+              ]
+            ]
           ]
+          set ycpt ycpt + 1
         ]
-        set ycpt ycpt + 1
+        set xcpt xcpt + 1
       ]
-      set xcpt xcpt + 1
+      set zcpt zcpt + 1
+
     ]
     set cpt cpt + 1
   ]
@@ -335,8 +354,8 @@ to-report analyse-turtles-patches [dist]
   ; on récupère les patches dans un rayon de dist
   ; TODO ici uniquement les convois
   let patches-in-dist patches with [pxcor < xcoord + dist and pxcor > xcoord - dist and pycor < ycoord + dist and pycor > ycoord - dist and pycor = solAlt]
-  let turtles-in-dist ennemies-on patches-in-dist
-  ifelse (any? turtles-in-dist)
-  [report min-one-of turtles-in-dist [distance myself] ]
+  let convois-in-dist convois-on patches-in-dist
+  ifelse (any? convois-in-dist)
+  [report min-one-of convois-in-dist [distance myself] ]
   [report nobody]
 end
