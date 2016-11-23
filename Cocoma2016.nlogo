@@ -1,4 +1,4 @@
-__includes [ "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls" "environment.nls" "functions.nls"]
+__includes [ "setups.nls" "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls" "environment.nls" "functions.nls"]
 
 
 breed [waypoints waypoint]
@@ -10,6 +10,14 @@ breed [bullets bullet]
 breed [HQs HQ]
 breed [cadavres cadavre]
 
+breed [asupprs asuppr]
+asupprs-own [
+  cpt-tours
+  reset-tours
+  cercle-fini?
+  rayon
+  je-suis-qui ; turtles a suivre
+]
 
 directed-link-breed [path-links path-link]
 undirected-link-breed [dummy-links dummy-link]
@@ -20,8 +28,8 @@ directed-link-breed [convoi-links convoi-link]
 globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: definit le niveau ou se trouvent toutes les informations de la carte (obstacles base etc.) car en 2D, niveau au sol ou se trouvent les agents, niveau basse altitude et niveau haute altitude
   base-patches base-entry base-central ; precache: definit ou se trouvent les patchs de la base d'atterrissage, le patch d'entree sur la piste d'atterrissage, et le patch ou doivent s'arreter les drones pour se recharger. Permet d'evaluer rapidement la distance et les besoins des drones (quand ils doivent rentrer a la base)
   as-cost as-path ; variables globales pour les chemins AStar: le cout d'un pas sur un patch, et as-path est la liste des plans, un pour chaque convoi leader
-  ;max-fuel max-ammo ; fuel and ammo for drones.
-  ;fuel-dec ; how much fuel will be decremented at each iteration
+                  ;max-fuel max-ammo ; fuel and ammo for drones.
+                  ;fuel-dec ; how much fuel will be decremented at each iteration
   mission-completed? mission-failed?
   send-interval ; communication period
   is-movie-recording?
@@ -31,7 +39,7 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
 patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? ; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
   as-closed as-heuristic as-prev-pos ; variables temporaires pour calculer les chemins AStar (effaces a chaque calcul de plan)
   zone-ennemies ; pour définir s'il s'agit d'une zone ennemie,  ie contenant un ennemie dans un rayon de 5 (0: non-ennemie; >0 : enregistrée comme zone-ennemie pour encore X temps ou X est la valeur de la variable)
-  ]
+]
 
 convois-own[incoming-queue
   finished? ; Is the goal reached ?
@@ -46,6 +54,7 @@ convois-own[incoming-queue
 ]
 
 drones-own [
+  cpt-tours
   freq-tir
   speed maxdir ;speed + angle de rotation max
   leader?
@@ -75,189 +84,8 @@ bullets-own [
   speed
   power ; TODO useful?
   energy ; distance maximale de propagation d'une balle (correspond à la distance de tir du tireur)
-  ;;energy : dommages réalisés à la cible, plus la cible est proche plus les dommages sont grands
+         ;;energy : dommages réalisés à la cible, plus la cible est proche plus les dommages sont grands
 ]
-
-
-;***********************
-;         SETUP
-;***********************
-
-to setup
-  ; The setup generates environments until one of them is acceptable (the convoi can accomplish the mission)
-  let path-is-possible? false
-  while [not path-is-possible?] [
-    clear-all
-    if not debug and not debug-verbose [no-display] ; disable gui display to speedup processing, the time slider won't influence the setup procedure
-    setup-globals
-    setup-env
-    clear-turtles ; reinit the id of the agents
-    setup-convois ;
-
-    ifelse nb-cars <= 0 [
-      set path-is-possible? true
-    ]
-    ; generate a path and check is the convoi can reach its destination. If not, generate a new env
-    [
-      let start-path (plan-astar ([[patch-at 0 0 (pzcor * -1)] of patch-here] of one-of convois with [leader?]) (one-of patches with [objectif?]) false)
-      set as-path replace-item 0 as-path start-path
-      if not empty? start-path [ set path-is-possible? true]
-    ]
-  ]
-  if not debug and not debug-verbose [no-display]
-  ;setup-citizens
-  ;  setup-hq
-
-  setup-precache
-  setup-drones
-  setup-ennemies
-  ; on définit la forme d'une balle (bullet)
-  set-default-shape bullets "arrow 3"
-  ;ask patches with [obstacle?] [set pcolor orange]
-  display ; reenable gui display
-  reset-ticks
-end
-
-; Initial parameters
-to setup-globals
-  set ray-zone-ennemy 5
-  set mapAlt 0
-  set solAlt 1
-  set basseAlt (floor max-pzcor / 3 * 2 - 1)
-  set hauteAlt (floor max-pzcor - 1)
-
-  set mission-completed? false
-  set mission-failed? false
-
-  set as-cost 1 ; cost to move
-  set as-path n-values nb-cars [[]] ; max one path for each car
-
-  set send-interval 10 ; in number of steps
-
- ; set dist-R-set []
-
-  set is-movie-recording? false
-end
-
-
-; Precaches places en global variables for static components in order to speed-up the processes.
-to setup-precache
-  set base-patches (patches with [base? and pzcor = mapAlt]) ; precache to speedup things
-  set base-entry max-one-of (base-patches with-min [pycor]) [pxcor]
-  set base-central min-one-of (base-patches with-min [pxcor]) [pycor]
-end
-
-;environment definition
-to setup-env
-  ;ask patches with [pzcor = mapAlt] [set pcolor orange]
-  ask patches [set obstacle? false set base? false set hangar? false set objectif? false set bridge? false set montagne? false]
-
-  ; Herbe
-  ask patches with [pzcor = mapAlt][set pcolor green + (random-float 2) - 1]
-
-  ; Montagnes
-  ;ask patches with [pzcor = random hauteAlt] [set pcolor gray + (random-float 2) - 1]
-  ;ask patches with[pzcor <= solAlt and pxcor >= 0 and pxcor < 3 and pycor >= 0 and pycor < 5][set obstacle? true set base? false set hangar? false set montagne? true] ; Batiment
-  ;ask patches with [pzcor < 5 and pxcor = 0 and pycor = 0 and pzcor > 0 ] [set obstacle? true set base? false set hangar? false set montagne? true] ; Antenne
-  ;ask patches with [montagne?][set pcolor gray + (random-float 2) - 1]
-  if nb-mountains > 0 [
-    repeat nb-mountains [
-      ; A builder will move and create a mountain at each step
-      create-envconstructors 1 [
-        let zcoord solAlt
-        ifelse random-float 1 <= 0.5
-          [set zcoord hauteAlt]
-          [set zcoord basseAlt]
-        set zcor zcoord
-        ; random deploy on the left side or on the bottom one
-        let patch-of-interest one-of patches with [not obstacle? and pzcor = solAlt and (pxcor > 20 or pycor > 20)]
-        set xcor [pxcor] of patch-of-interest
-        set ycor [pycor] of patch-of-interest
-        ;set xcor [pxcor] of (one-of patches with [not obstacle? and pzcor = solAlt and pxcor > 15])
-        ;set ycor [pycor] of (one-of patches with [not obstacle? and pzcor = solAlt and pycor > 15])
-        set pitch 270
-        set roll 0
-        set heading 0
-
-        ; Tag of the first case
-        ;ask patch-here [set pcolor (gray + (random-float 2) - 1) set obstacle? true set montagne? true]
-        ; fonctionne mais tres lent : ask patches with [not obstacle?] in-cone-nowrap (zcoord + 2) 40 [set pcolor (gray + (random-float 2) - 1) set obstacle? true set montagne? true]
-        ask patches in-cone-nowrap (zcoord + 3) mountain-diam [set pcolor (gray + (random-float 2) - 1) set obstacle? true set montagne? true]
-        die
-      ]
-    ]
-  ]
-  ; Rivieres
-  if nb-rivers > 0 [
-    repeat nb-rivers [
-      ; A builder will move and create a river at each step
-      create-envconstructors 1 [
-        ; random deploy on the left side or on the bottom one
-        ifelse random-float 1 <= 0.5 [
-          set xcor 0
-          set ycor random max-pycor
-          set heading 90
-        ]
-        [
-          set ycor 0
-          set xcor random max-pxcor
-          set heading 0
-        ]
-        set zcor mapAlt
-
-        ; Tag of the first case
-        ask patch-here [set pcolor blue set obstacle? true]
-
-        ; move and mark the patch
-        repeat max-pxcor + max-pycor [
-          ; Change l'orientation aleatoirement
-          rt random 30 - 15
-          ; one step
-          fd 1
-          ; randomly select a bridge or a river
-          ask patch-here [
-            ; bridge
-            ifelse random-float 1 <= 0.1 [
-              set pcolor brown
-              set bridge? true
-            ]
-            ; River
-            [
-              set pcolor blue
-              set obstacle? true
-            ]
-          ]
-        ]
-        die
-      ]
-    ]
-  ]
-
-  ; Lacs
-  if nb-lakes > 0 [ ask n-of nb-lakes patches with [pzcor = mapAlt and pxcor > 7 and pycor > 7] [ask patches with [distance-nowrap myself < 4 and pzcor = mapAlt] [set pcolor blue set obstacle? true]] ]
-
-  ; Objectif
-  ask one-of patches with[obstacle? = false and base? = false and hangar? = false and pxcor >= (max-pxcor / 2) and pycor >= (max-pycor / 2) and pzcor = mapAlt][set objectif? true ask patch-at 0 0 mapAlt [set pcolor yellow]]
-
-  ; Hangar (la ou les voitures du convois demarrent)
-  ask patches with[pzcor = mapAlt and pxcor >= 5 and pxcor < 7 and pycor >= 0 and pycor < 12][set pcolor 8 set hangar? true set obstacle? true]
-
-  ; Base de decollage et atterrissage pour les drones
-  ask patches with[pzcor = mapAlt and pxcor >= 3 and pxcor < 5 and pycor >= 0 and pycor < 12][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste verticale
-  ;ask patches with[pzcor = mapAlt and pycor = 0 and pxcor >= 0 and pxcor < 18][set pcolor 1 set base? true set hangar? false set obstacle? true] ; piste horizontale
-  ; Batiment (pour faire joli, ne sert a rien fonctionnellement)
-  ask patches with[pzcor <= solAlt and pxcor >= 0 and pxcor < 3 and pycor >= 0 and pycor < 5][set pcolor 3 set obstacle? true set base? false set hangar? false] ; Batiment
-  ask patches with [pzcor < 5 and pxcor = 0 and pycor = 0 and pzcor > 0 ] [ set pcolor 3 set obstacle? true set base? false set hangar? false] ; Antenne
-
-
-  ;;; Emurrer la map
-  ask patches with [(pxcor = min-pxcor) or (pycor = min-pycor) or (pxcor = max-pxcor) or (pycor = max-pycor)] [set obstacle? true set mur-map? true]
-
-  ; Copie des obstacles: on s'assure que les patchs au niveau solAlt ont la meme valeur obstacle? que leur patch en-dessous au niveau mapAlt (assure que enemy-random-move fonctionne bien et facilite la detection des obstacles car pas besoin de regarder au niveau mapAlt mais directement dans les patchs solAlt)
-  ask patches with [[obstacle?] of patch-at 0 0 -1] [set obstacle? true]
-end
-
-
 
 
 ;-----------
@@ -274,201 +102,6 @@ to go
   update-patches
   tick
 end
-
-;------------------------------------------------------------
-;------------- functions ------------------------------------
-;------------------------------------------------------------
-
-to random-walk
-  if (not detect-obstacle)[
-    forward speed
-  ]
-  ifelse (random 3 < 2)[
-    rt random 20
-  ]
-  [lt random 20]
-end
-
-
-; Plannification AStar d'un patch start vers un patch goal
-; Note: si l'heuristique est consistante/monotone (comme distance euclidienne/vol d'oiseau), h = 0 revient a faire Djikstra
-; Note2: on l'utilise avec le convoi mais on peut l'utiliser avec n'importe quel agent, c'est generique.
-; Note3: limite en 2D pour cette application mais on peut facilement la modifier pour accepter la 3D (enlever les limites with [pzcor ...])
-to-report plan-astar [start goal longpath?] ; start et goal sont des patchs
-                                            ; Desactivation du refresh GUI (car calculs internes): Pour etre plus rapide, on dit a NetLogo qu'il peut calculer toute cette fonction sans avoir a updater le GUI (que des calculs internes), comme ca le slider de vitesse n'influencera pas la vitesse de ce code (sinon en slower ca met vraiment beaucoup de temps)
-  if not debug-verbose [no-display]
-
-  ; INIT
-  ; Ajustement du niveau du but par rapport au start, car le plan est en 2D ici
-  let start-pzcor [pzcor] of start
-  set goal [patch-at 0 0 ([pzcor] of start - [pzcor] of goal)] of goal
-
-  ; (Re)init des variables AStar sur tous les patchs
-  ;let closed n-values world-height [n-values world-width [0]]
-  ask patches [
-    set as-closed 0 ; sert a savoir si ce patch a deja ete visite. 0 = non visite, 1 = deja visite (et on visite en premier par le chemin optimal comme Djikstra, donc si un noeud a deja ete visite, on est sur qu'il est inutile de le revisiter par un autre chemin puisqu'il sera moins optimal que le premier chemin qui a conduit a ce patch - ceci est assure car on utilise la distance euclidienne a vol d'oiseau qui est une heuristique consistante/monotone, pas juste admissible)
-    set as-heuristic astar-faster * distance-nowrap goal ; si astar-faster > 1 alors on utilise Weighted AStar, ou le chemin est suboptimal avec une limite de cout au plus astar-faster fois supérieur au cout du chemin optimal. (eg: astar-faster = 2 signifie que le chemin sera au pire deux fois moins optimal au pire). Note: si astar-faster = 0 alors h = 0 pour tous les patchs et ca revient à l'algo de Dijkstra.
-  ]
-
-  ; Init de l'algo en utilisant le patch de depart
-  let pos start
-  let h [as-heuristic] of start
-  let g 0
-  let f (g + h)
-
-  ; Init de la liste open (la liste des patchs a explorer) du type [f, g, h, position du patch]
-  let open (list (list f g h pos))
-
-  ; Init des criteres d'arret
-  let found false ; si un chemin a ete trouve
-  let resign false ; si aucun chemin ne peut etre trouve (plus rien dans la liste open)
-  let counter 0 ; si on a visite trop de patchs et que la recherche met trop de temps
-
-  while [not found and not resign] [
-
-    ; Critere d'arret si echec (plus de patch a visiter ou trop de patchs deja visite)
-    ifelse empty? open or (astar-max-depth > 0 and counter > astar-max-depth) [
-      set resign true
-    ]
-    [
-      ; Incremente le counter
-      set counter counter + 1
-
-      ; On reorganise la liste open pour toujours visiter le meilleur patch candidat en premier (celui qui maximise f)
-      set open sort-by [item 0 ?1 < item 0 ?2] open
-      ; Cas particulier: on visite le plus mauvais patch, celui qui minimise f, pour maximiser la longueur du chemin (cool pour tester les drones car l'environnement reste relativement petit)
-      if astar-longpath or longpath? [set open reverse open]
-      ; Autre cas particulier: on visite le chemin au hasard, permet aussi de construire un long chemin (mais moins long) et plus rapidement. C'est un compromis entre l'optimal et la longueur.
-      if astar-randpath [set open shuffle open]
-
-      ; Pop un element de la liste, le meilleur candidat
-      let next first open
-      set open but-first open
-      set pos item 3 next
-      set g item 1 next
-
-      ; Dessin en live du chemin parcouru par astar
-      if debug-verbose [
-      wait 0.01
-      ask pos [ set pcolor red ]
-      ]
-
-      ; Critere d'arret si reussite: on est sur le but donc on a trouve un chemin
-      ifelse pos = goal [
-        set found true
-      ]
-      ; Sinon on va explorer les voisins du patch en cours
-      [
-        ; Expansion du meilleur candidat (expansion = on ajoute les voisins dans la liste open, des noeuds a visiter)
-        ask [neighbors6-nowrap with [pzcor = start-pzcor and as-closed = 0 and not obstacle? and not base?]] of pos [ ; On ne visite que les voisins au meme niveau (astar en 2D, mais on peut etendre ici au 3D facilement!) ET on ne l'a pas deja visite (as-closed = 0) ET il n'y a pas d'obstacle sur ce patch
-          ; Calcul du score f de ce voisin
-          let g2 g + as-cost
-          let h2 as-heuristic
-          let f2 g2 + h2
-
-          ; Ajout dans la liste open des patchs a visiter
-          set open lput (list f2 g2 h2 self) open
-
-          ; Ajout des meta-donnees sur ce patch
-          ;set as-closed min (list ((as-closed + 1) ([as-closed] of pos + 1)) ; Pas necessaire car on est sur qu'on ne visite qu'une fois un noeud dans open, ensuite on lui attribue un nombre dans closed et donc on ne l'ouvrira plus jamais
-          set as-closed ([as-closed] of pos + 1) ; pour savoir que ce patch a deja ete visite + faire astar-visu-more
-          set as-prev-pos pos ; pour backtracker ensuite et trouver le chemin qui mene au but
-        ]
-      ]
-    ]
-  ]
-
-  if debug [print (word "found:" found " - resign:" resign)]
-
-  ; Visualisation de tous les noeuds explores en coloriant selon quand ca a ete explore (score as-closed)
-  if astar-visu-more [
-    let max-closed max [as-closed] of patches with [pzcor = start-pzcor] ; Récupère la valeur tdval max entre tous les patchs
-    let min-closed min [as-closed] of patches with [pzcor = start-pzcor] ; Idem pour min tdval
-    if (max-closed != min-closed) [ ; Si on a au moins appris quelquechose (sinon tous les patchs auront la même couleur, ce n'est pas intéressant)
-      ask patches with [pzcor = start-pzcor] [
-        if debug [set plabel precision as-closed 1]
-        set pcolor (61 + ((as-closed - min-closed) / (max-closed - min-closed)) * 9 )
-      ]
-    ]
-  ]
-
-  ; Extraction du chemin par marche inverse, depuis le goal vers start (grace a as-prev-pos qui memorise depuis quel patch on est arrive a celui en cours, et donc le chemin le plus court puisque l'algo garantie que la premiere exploration est toujours optimale)
-  let path []
-  if not resign [
-    ; On commence du but, goal
-    set pos goal
-    set path lput pos path
-
-    ; Pour la visualisation du chemin, init du premier waypoint
-    if astar-visu [
-      if any? waypoints [
-        ask waypoints [ die ]
-      ]
-      create-waypoints 1 [ hide-turtle move-to [patch-at 0 0 1] of goal ]
-    ]
-
-    ; Tant qu'on a pas reconstruit tout le chemin vers le debut, start
-    ; On va a chaque fois recuperer le noeud parent avec as-prev-pos
-    while [pos != start] [
-
-      ; Visualisation du chemin, on ajoute un lien entre le parent et le noeud en cours
-      if astar-visu [
-        create-waypoints 1 [ hide-turtle move-to [patch-at 0 0 1] of ([as-prev-pos] of pos)
-          create-path-link-to one-of waypoints-on [patch-at 0 0 1] of pos [
-            set color red
-            show-link
-          ]
-        ]
-      ]
-
-      ; Construction inverse du chemin, on ajoute le noeud parent dans le chemin et on va l'explorer
-      ;set pos [min-one-of neighbors6-nowrap [as-closed]] of pos
-      set pos [as-prev-pos] of pos
-      set path lput pos path
-    ]
-
-    ; Chemin construit, on inverse la liste pour qu'elle soit de start a goal au lieu de l'inverse
-    set path reverse path
-    set path but-first path ; on enleve le premier patch, qui est celui sur lequel on est deja
-  ]
-
-  ; Reactivation du refresh GUI
-  display
-
-  ; Et on retourne le chemin complet (ou une liste vide si on n'a rien trouve)
-  report path
-end
-
-
-; Return the 6 neighbours without the world wrap
-to-report neighbors6-nowrap
-; reports neighbors-nowrap-n or the indicated size
-  report neighbors6 with
-  [ abs (pxcor - [pxcor] of myself) <= 1
-    and abs (pycor - [pycor] of myself) <= 1
-  ]
-end
-
-
-to-report detect-obstacle
-  ifelse ( [obstacle?] of (patch-ahead 1) = true)[
-    report true
-  ]
-  ; if any? other patches in-cone-nowrap 1 120 with [obstacle?] [report true]
-  ; if any? other patches in-cone 10 60 with [obstacle?] [report true]
-  ; if any? other patches in-cone 10 90 [report true]
-  ; if any? other patches in-cone 3 270 [report true]
-  [report false]
-
-end
-
-
-to turn-away
-  ;let free-patches neighbors with [not any? patches ]
-  ;if any? free-patches [face one-of free-patches]
-  rt random 10 - 5
-end
-
 
 ;-----------
 ;  DISPERSION
