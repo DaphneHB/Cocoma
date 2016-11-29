@@ -37,6 +37,7 @@ to reinitialize-convois
       set heading 0
       set roll 0
       set pitch 0
+      set timer-maj maj-time
       set finished? false
       set leader? false
       set to-protect? false
@@ -250,47 +251,52 @@ end
 
 ;;; Permet de mettre à jour le zones ennemies enregistres
 to maj-map-zones
-  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue
-  ;;;; on inspecte tous les patches sur une distance
-  let cpt 1
-  let angle 360 ; on verifie toujours tout autour
-  let cases-visitees []
-  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
-  let angles-impossibles []
-  ;; on avance en augmentant le rayon de verification
-  while [cpt <= c-vision] [
-    ; on teste pour angle/2 à gauche (donc -angle/2) et angle/2 à gauche
-    let ss-cpt (0 - (angle / 2))
-    ;; on verifie dans l'angle de 7 en 7 (estimation arbitraire)
-    while [ss-cpt <= angle / 2] [
-      ; si l'angle a été scellé
-      if (not member? ss-cpt angles-impossibles)
-      [
-      let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
-      ifelse (member? patch-au-loin cases-visitees)
-        [set cases-visitees lput patch-au-loin cases-visitees]
+  ifelse (timer-maj <= 0 )[
+    set timer-maj maj-time
+    ask patches with [zone-ennemies > 0] [set pcolor orange]
+    ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue
+    ;;;; on inspecte tous les patches sur une distance
+    let cpt 1
+    let angle 360 ; on verifie toujours tout autour
+    let cases-visitees []
+    ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
+    let angles-impossibles []
+    ;; on avance en augmentant le rayon de verification
+    while [cpt <= c-vision] [
+      ; on teste pour angle/2 à gauche (donc -angle/2) et angle/2 à gauche
+      let ss-cpt (0 - (angle / 2))
+      ;; on verifie dans l'angle de 7 en 7 (estimation arbitraire)
+      while [ss-cpt <= angle / 2] [
+        ; si l'angle a été scellé
+        if (not member? ss-cpt angles-impossibles)
         [
-          ;; s'il y a un obstacle, on n'étudie pas la case et on la scelle pour la suite
-          ; ie un 
-          ifelse ([obstacle?] of patch-au-loin = true)
+          let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
+          ifelse (member? patch-au-loin cases-visitees)
+          [set cases-visitees lput patch-au-loin cases-visitees]
           [
-            ;print "angle scellé"
-            set angles-impossibles lput ss-cpt angles-impossibles]
-          [
-            let ennemies-on-patch ennemies-on patch-au-loin
-            if (any? ennemies-on-patch) [
-              ; s'il y a un ennemi sur le patch, on le note comme zone ennemie
-              ask patch-au-loin [ ask patches in-radius ray-zone-ennemy with [pzcor = solAlt] [
-                set zone-ennemies ray-zone-ennemy ; e-vision
+            ;; s'il y a un obstacle, on n'étudie pas la case et on la scelle pour la suite
+            ; ie un 
+            ifelse ([obstacle?] of patch-au-loin = true)
+            [
+              ;print "angle scellé"
+              set angles-impossibles lput ss-cpt angles-impossibles]
+            [
+              let ennemies-on-patch ennemies-on patch-au-loin
+              if (any? ennemies-on-patch) [
+                ; s'il y a un ennemi sur le patch, on le note comme zone ennemie
+                ask patch-au-loin [ ask patches in-radius ray-zone-ennemy with [pzcor = solAlt] [
+                  set zone-ennemies timer-maj + zone-ennemies; e-vision
+                ]
+                ]
               ]
-              ]
+              ; [set heading -1 * ss-cpt]]
             ]
-            ; [set heading -1 * ss-cpt]]
           ]
         ]
+        set ss-cpt ss-cpt + 7 ; increment de 7 choisi arbitrairement
       ]
-      set ss-cpt ss-cpt + 7 ; increment de 7 choisi arbitrairement
+      set cpt cpt + 1
     ]
-    set cpt cpt + 1
   ]
+  [set timer-maj timer-maj - 1]
 end

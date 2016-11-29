@@ -34,6 +34,7 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
   send-interval ; communication period
   is-movie-recording?
   ray-zone-ennemy
+  maj-time
 ]
 
 patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? ; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
@@ -51,6 +52,7 @@ convois-own[incoming-queue
   last-send-time ; communication historical time-stamp
   pv
   beliefs intentions
+  timer-maj ; TODO
 ]
 
 drones-own [
@@ -425,7 +427,7 @@ INPUTBOX
 335
 113
 nb-ennemies
-5
+100
 1
 0
 Number
@@ -566,7 +568,7 @@ INPUTBOX
 396
 113
 nb-drones
-2
+0
 1
 0
 Number
@@ -1114,7 +1116,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 3D 5.3
+NetLogo 3D 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

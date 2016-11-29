@@ -254,7 +254,7 @@ to comportement-elliptique
     ifelse ((cpt-tours <= 0 and cercle-fini?) or marge >= rayon * 2 ) [
       print "CercleFini !"
       ; si on est a porté de distance de la personne à suivre
-      ifelse (marge < rayon and je-suis-qui)
+      ifelse (marge < rayon );and je-suis-qui)
       [ ; on commence un nouveau cercle
         print "Nouveau cercle"
         set cpt-tours reset-tours

@@ -78,10 +78,7 @@ to setup-globals
   
   set is-movie-recording? false
   
-  create-asupprs 1 [
-    set color yellow
-    setxyz random 50 random 50 random max-pzcor
-    set shape "cylinder"]
+  set maj-time 10
 end
 
 
