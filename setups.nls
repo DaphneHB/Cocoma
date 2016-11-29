@@ -38,14 +38,18 @@ to setup
   ;; TODO a suppr
   create-asupprs 1 [
     set color yellow
-    setxyz random 50 random 50 4
-    set shape "cylinder"
+    move-to one-of patches with [base? = true]
+    set zcor 6
+    set shape "airplane"
     set cpt-tours 0
     set reset-tours 5
-    set je-suis-qui one-of ennemies
+    set je-suis-qui one-of convois
+    ask je-suis-qui [set pcolor orange]
     set cercle-fini? true
     set rayon 5
-    
+    set heading 0
+    set pitch 0
+    set roll 0
     print (word "Je suis : " je-suis-qui " placé en " [pxcor] of je-suis-qui " " [pycor] of je-suis-qui)
   ]
   

@@ -54,7 +54,7 @@ to reinitialize-drones
       move-to patch base-max-pxcor base-max-pycor 1
     ]
     
-    ; deploying the other car
+    ; deploying the other drones
     if nb-drones > 1 [
       ; ask non leader cars
       ask turtle-set sort-on [who] drones with [who > first-drone]
@@ -230,7 +230,7 @@ to random-walk-drone
   if (not detect-obstacle)[
     set pitch 0
     set roll 0
-    forward speed
+    forward speed      
   ]
   ifelse (random 3 < 2)[
     rt random 20
@@ -249,11 +249,12 @@ end
 to comportement-elliptique
   ;; TODO à remplacer par des drones
   ask asupprs [
+    let marge distance-nowrap je-suis-qui
     ; si on a fini de faire un cercle
-    ifelse (cpt-tours <= 0 and cercle-fini?) [
+    ifelse ((cpt-tours <= 0 and cercle-fini?) or marge >= rayon * 2 ) [
       print "CercleFini !"
       ; si on est a porté de distance de la personne à suivre
-      ifelse (distance-nowrap je-suis-qui < rayon)
+      ifelse (marge < rayon and je-suis-qui)
       [ ; on commence un nouveau cercle
         print "Nouveau cercle"
         set cpt-tours reset-tours
@@ -261,12 +262,16 @@ to comportement-elliptique
       ]
       [ ; sinon on se rapproche de la cible
         print "...On se rapproche...."
-        face je-suis-qui
+        face-nowrap je-suis-qui
         fd e-speed * 0.5
+        set pitch 0
+        set roll 0
       ]
     ]
     [
-      
+      ; TODO faire des tours
+      fd 0.5 * simu-speed * d-speed / 10
+      lt 2 ; ou rt
       
       set cpt-tours cpt-tours - 1
       print "On tourne?"]

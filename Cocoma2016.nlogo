@@ -237,7 +237,7 @@ INPUTBOX
 141
 112
 nb-mountains
-3
+0
 1
 0
 Number
@@ -425,7 +425,7 @@ INPUTBOX
 335
 113
 nb-ennemies
-50
+5
 1
 0
 Number
@@ -566,7 +566,7 @@ INPUTBOX
 396
 113
 nb-drones
-10
+2
 1
 0
 Number
