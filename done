@@ -1,0 +1,7 @@
+23/11/2016 :
+-modification fichier drones.nls 
+	-> ajout de  with [pzcor = solAlt]  pour les in-radius
+	-> go-drones avec ifelse
+	-> comportement-elliptique
+- ajout d'une variable   cpt-tours aux drones
+

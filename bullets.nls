@@ -1,0 +1,58 @@
+
+;-----------
+;  BULLETS
+;-----------
+
+to bullets-fire
+  ask bullets [
+    if (any? convois-here and num = 1)[
+      ask convois-here[
+        set pv pv - 1
+        if (pv = 0)[
+          hatch-cadavres 1[
+            set color black
+            set shape "car"
+            set zcor mapAlt
+          ]
+          die
+        ]
+      ]
+      die
+    ]
+    if (any? drones-here and num = 1)[
+      ask drones-here[
+        set pv pv - 1
+        if (pv = 0)[
+          hatch-cadavres 1[
+            set color black
+            set shape "airplane"
+            set zcor mapAlt
+          ]
+          die
+        ]
+      ]
+      die
+    ]
+    if (any? ennemies-here and num = 2)[
+      ask ennemies-here[
+        set pv pv - 1
+        if (pv = 0)[
+          hatch-cadavres 1[
+            set color black
+            set shape "face sad"
+            set zcor mapAlt
+          ]
+          die
+        ]
+      ]
+      die
+    ]
+    ifelse ( (energy = 0) or (   [montagne? or base?] of (patch-ahead 1) = true  ) or (zcor >= max-pzcor - 1))[
+      die
+    ]
+    [
+      forward speed
+      set energy (energy - 1)
+    ]
+  ]
+end
