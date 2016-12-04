@@ -1,0 +1,115 @@
+
+;-----------
+;  ENNEMIES
+;-----------
+
+
+to setup-ennemies
+  create-ennemies nb-ennemies
+  ; on récupere tous les patch qui ne sont pas des obstacles donc ponts et vert
+  let good-patches n-of nb-ennemies patches with [pzcor = solAlt and not obstacle? and not any? other turtles-here] ;(pcolor < (green + 2) or pcolor > (green - 2))
+  ask ennemies [
+    set pv e-life
+    set shape "car"
+    ; on leur donne la meme fct de vitesse que le convoi avec des parametres differents
+    set speed 0.05 * e-speed * simu-speed
+    set carburant 100
+    ; on pose l'agent sur un patch non obstacle
+    let good-patch one-of good-patches with [pxcor > 25 or pycor > 25]
+    move-to good-patch
+    set zcor solAlt
+    ;setxyz random-xcor random-ycor mapAlt;( min-pycor + 1 ) random-zcor
+    set color red
+    set freq-tir 0 ; initialisée à 0 pour pouvoir tirer la premiere balle
+    set maxdir 10 * simu-speed
+    ]
+end
+
+
+;;; Pour gérer le déplacement des ennemies
+to go-ennemies
+  ask ennemies [
+    if (pv > 0)[
+    ;;
+      let nearest-convoi min-one-of convois in-radius-nowrap e-vision [distance-nowrap myself]
+      let nearest-drone min-one-of drones in-radius-nowrap e-vision [distance-nowrap myself]
+      
+      ifelse ((nearest-convoi != nobody) or (nearest-drone != nobody))[
+        set color blue
+        ifelse (nearest-drone != nobody)[
+          attack-convoi nearest-drone]
+        [attack-convoi nearest-convoi]
+      ]
+      [
+        set color red
+        ;set to-follow nobody
+        random-walk]
+      ;right random 90
+      ;;; Si l'agent n'a plus de carburant il marche
+      ;ifelse carburant > 0
+      ;[ forward ( random speed + 1 )]
+      ;[ forward ((random speed + 1 )/ 2) ]
+    ]
+  ]
+end
+
+to attack-convoi [nearest]
+  set heading towards nearest
+  ifelse (distance nearest <= e-dist-tir)[
+    set color yellow
+    ifelse (freq-tir = 0) [
+      face nearest
+      hatch-bullets 1 [
+        set num 1
+        set speed 0.2 * simu-speed
+        set energy (e-dist-tir * 20)
+        set color red ; TODO calcul a détermine
+      ]
+      set freq-tir e-frequence-tir * e-dist-tir / simu-speed
+      set pitch 0
+    ]
+    [
+      set freq-tir (freq-tir - 1)]
+  ]
+  
+  [
+    if not detect-obstacle [fd speed]
+  ] ; ils vont a l'encontre du convoi qu'ils on vu
+end
+
+
+
+;;; Renvoie le plus proche convoi dans un rayon de distance, sur un angle de angle
+; on ne considere que avec une rotation totale ou avec une vision a 180
+to-report detect-convoi [angle dist]
+  let cpt 0
+  while [cpt < dist] [
+    set cpt cpt + 1
+    if ([obstacle?] of patch-ahead cpt = true)
+    [report nobody]
+    let convois-on-patch convois-on patch-ahead cpt
+    if (any? convois-on-patch)
+    [report one-of convois-on-patch]
+  ]
+  report nobody
+  ;let xcoord xcor
+  ;let ycoord ycor
+  ;let nearest-convoi-patch nobody
+  ; avec une vision de 180 ou moins
+  ;if (angle >= 180)
+  ;[set nearest-convoi-patch min-one-of patches with
+  ;    [pxcor < xcoord + dist and pxcor > xcoord - dist and pycor > ycoord and pycor < ycoord + dist and any? convois-here]
+  ;    [distance-nowrap myself]
+  ;]
+  ;; avec une vision de plus de 180
+  ;if (angle < 180)
+  ;[set nearest-convoi-patch min-one-of patches with
+  ;    [pxcor < xcoord + dist and pxcor > xcoord - dist and pycor > ycoord - dist and pycor < ycoord + dist and any? convois-here]
+  ;    [distance-nowrap myself]
+  ;]
+  ;if nearest-convoi-patch = nobody
+  ;[report nobody]
+  ;let nearest-convoi min-one-of convois-on nearest-convoi-patch [distance myself]
+  ;print nearest-convoi
+  ;report nearest-convoi
+end
