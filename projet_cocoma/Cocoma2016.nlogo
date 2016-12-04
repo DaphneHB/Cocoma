@@ -1,8 +1,4 @@
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 __includes [ "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls"]
-=======
-__includes [ "setups.nls" "drones.nls" "convois.nls" "bullets.nls" "ennemis.nls" "communication.nls" "bdi.nls" "environment.nls" "functions.nls"]
->>>>>>> origin/master:Cocoma2016.nlogo
 
 
 breed [waypoints waypoint]
@@ -14,17 +10,6 @@ breed [bullets bullet]
 breed [HQs HQ]
 breed [cadavres cadavre]
 
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
-=======
-breed [asupprs asuppr]
-asupprs-own [
-  cpt-tours
-  reset-tours
-  cercle-fini?
-  rayon
-  je-suis-qui ; turtles a suivre
-]
->>>>>>> origin/master:Cocoma2016.nlogo
 
 directed-link-breed [path-links path-link]
 undirected-link-breed [dummy-links dummy-link]
@@ -34,7 +19,6 @@ directed-link-breed [convoi-links convoi-link]
 
 globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: definit le niveau ou se trouvent toutes les informations de la carte (obstacles base etc.) car en 2D, niveau au sol ou se trouvent les agents, niveau basse altitude et niveau haute altitude
   base-patches base-entry base-central ; precache: definit ou se trouvent les patchs de la base d'atterrissage, le patch d'entree sur la piste d'atterrissage, et le patch ou doivent s'arreter les drones pour se recharger. Permet d'evaluer rapidement la distance et les besoins des drones (quand ils doivent rentrer a la base)
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
   as-cost
    as-path ; variables globales pour les chemins AStar: le cout d'un pas sur un patch, et as-path est la liste des plans, un pour chaque convoi leader
   ;max-fuel max-ammo ; fuel and ammo for drones.
@@ -54,22 +38,6 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
 patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? zone-ennemies?; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
   as-closed as-heuristic as-prev-pos ; variables temporaires pour calculer les chemins AStar (effaces a chaque calcul de plan)
   ]
-=======
-  as-cost as-path ; variables globales pour les chemins AStar: le cout d'un pas sur un patch, et as-path est la liste des plans, un pour chaque convoi leader
-                  ;max-fuel max-ammo ; fuel and ammo for drones.
-                  ;fuel-dec ; how much fuel will be decremented at each iteration
-  mission-completed? mission-failed?
-  send-interval ; communication period
-  is-movie-recording?
-  ray-zone-ennemy
-  maj-time
-]
-
-patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? ; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
-  as-closed as-heuristic as-prev-pos ; variables temporaires pour calculer les chemins AStar (effaces a chaque calcul de plan)
-  zone-ennemies ; pour définir s'il s'agit d'une zone ennemie,  ie contenant un ennemie dans un rayon de 5 (0: non-ennemie; >0 : enregistrée comme zone-ennemie pour encore X temps ou X est la valeur de la variable)
-]
->>>>>>> origin/master:Cocoma2016.nlogo
 
 convois-own[incoming-queue
   finished? ; Is the goal reached ?
@@ -81,17 +49,12 @@ convois-own[incoming-queue
   last-send-time ; communication historical time-stamp
   pv
   beliefs intentions
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
   but
   chemin
   chef
-=======
-  timer-maj ; TODO
->>>>>>> origin/master:Cocoma2016.nlogo
 ]
 
 drones-own [
-  cpt-tours
   freq-tir
   speed maxdir ;speed + angle de rotation max
   leader?
@@ -101,7 +64,6 @@ drones-own [
   dead?
   pv
   decollage? ;phase de decollage
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
   atterrissage?
   beliefs intentions
   voiture1
@@ -112,13 +74,6 @@ drones-own [
 ]
 
 ennemies-own [
-=======
-  beliefs intentions
-]
-
-ennemies-own [
-  champ-vision ;  liste des cases à analyser TODO useless
->>>>>>> origin/master:Cocoma2016.nlogo
   speed maxdir
   to-follow
   dead?
@@ -134,10 +89,9 @@ bullets-own [
   speed
   power ; TODO useful?
   energy ; distance maximale de propagation d'une balle (correspond à la distance de tir du tireur)
-         ;;energy : dommages réalisés à la cible, plus la cible est proche plus les dommages sont grands
+  ;;energy : dommages réalisés à la cible, plus la cible est proche plus les dommages sont grands
 ]
 
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 
 ;***********************
 ;         SETUP
@@ -320,8 +274,6 @@ end
 
 
 
-=======
->>>>>>> origin/master:Cocoma2016.nlogo
 
 ;-----------
 ;  BOUCLE GLOBALE
@@ -334,11 +286,9 @@ to go
   go-ennemies
   go-drones
   bullets-fire
-  update-patches
   tick
 end
 
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 ;------------------------------------------------------------
 ;------------- functions ------------------------------------
 ;------------------------------------------------------------
@@ -537,8 +487,6 @@ to turn-away
 end
 
 
-=======
->>>>>>> origin/master:Cocoma2016.nlogo
 ;-----------
 ;  DISPERSION
 ;-----------
@@ -570,7 +518,6 @@ to reset-view
   reset-perspective
 end
 
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 ; astar
 ; ennemis vision + attaque, + amélioration randomwalk
 
@@ -578,14 +525,6 @@ end
 ;autre comportement (exploration (set patch selon ennemis vu)
 ;suivi en spiral ?
 ;suivre centre de gravité ?
-=======
-
-; ennemis vision + attaque, + amélioration randomwalk
-;split selon la vie
-;retrait des pv
-
-
->>>>>>> origin/master:Cocoma2016.nlogo
 ;carburant pour drone
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -655,11 +594,7 @@ INPUTBOX
 60
 112
 nb-cars
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 3
-=======
-15
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 0
 Number
@@ -687,11 +622,7 @@ INPUTBOX
 141
 112
 nb-mountains
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 5
-=======
-0
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 0
 Number
@@ -735,7 +666,7 @@ INPUTBOX
 839
 193
 astar-max-depth
-1000
+10000
 1
 0
 Number
@@ -830,10 +761,10 @@ A*
 1
 
 BUTTON
-101
-385
-179
-418
+111
+382
+189
+415
 NIL
 go
 T
@@ -864,10 +795,10 @@ NIL
 1
 
 TEXTBOX
-342
-253
-492
-271
+474
+261
+624
+279
 Ennemies
 12
 0.0
@@ -879,20 +810,16 @@ INPUTBOX
 335
 113
 nb-ennemies
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 0
-=======
-100
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 0
 Number
 
 SLIDER
-342
-281
-514
-314
+474
+289
+646
+322
 e-life
 e-life
 0
@@ -904,33 +831,28 @@ NIL
 HORIZONTAL
 
 SLIDER
-343
-327
-515
-360
+475
+335
+647
+368
 e-vision
 e-vision
 1
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 25
 9
-=======
-20
-15
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-345
-377
-517
-410
+477
+385
+649
+418
 e-dist-tir
 e-dist-tir
-1
+2
 20
 8
 1
@@ -939,10 +861,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-344
-429
-516
-462
+476
+437
+648
+470
 e-speed
 e-speed
 0
@@ -954,20 +876,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-546
-253
-696
-271
+678
+261
+828
+279
 Drones
 12
 0.0
 1
 
 SLIDER
-536
-428
-708
-461
+673
+438
+845
+471
 d-speed
 d-speed
 0
@@ -979,17 +901,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 668
 291
 840
 324
-=======
-536
-283
-708
-316
->>>>>>> origin/master:Cocoma2016.nlogo
 d-life
 d-life
 0
@@ -1001,42 +916,30 @@ NIL
 HORIZONTAL
 
 SLIDER
-535
-375
-707
-408
+672
+385
+844
+418
 d-dist-tir
 d-dist-tir
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 0
 100
 8
-=======
-1
-25
-10
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-535
-324
-707
-357
+672
+334
+844
+367
 d-vision
 d-vision
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 0
 100
 14
-=======
-1
-25
-15
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 1
 NIL
@@ -1048,16 +951,16 @@ INPUTBOX
 396
 113
 nb-drones
-0
+10
 1
 0
 Number
 
 BUTTON
-197
-185
-320
-218
+257
+179
+380
+212
 NIL
 follow-convoi\n
 NIL
@@ -1071,20 +974,20 @@ NIL
 1
 
 TEXTBOX
-186
-162
-336
-180
+246
+156
+396
+174
 Watch
 12
 0.0
 1
 
 BUTTON
-198
-237
-323
-270
+258
+231
+383
+264
 NIL
 follow-drone
 NIL
@@ -1098,10 +1001,10 @@ NIL
 1
 
 BUTTON
-198
-289
-324
-322
+258
+283
+384
+316
 NIL
 follow-ennemy
 NIL
@@ -1115,10 +1018,10 @@ NIL
 1
 
 BUTTON
-197
-347
-326
-380
+257
+341
+386
+374
 NIL
 reset-view
 NIL
@@ -1132,10 +1035,10 @@ NIL
 1
 
 SLIDER
-343
-477
-515
-510
+475
+485
+647
+518
 e-frequence-tir
 e-frequence-tir
 1
@@ -1147,43 +1050,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 346
 580
 518
 613
-=======
-723
-280
-895
-313
->>>>>>> origin/master:Cocoma2016.nlogo
 c-life
 c-life
 0
 50
 10
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 1
-=======
-5
->>>>>>> origin/master:Cocoma2016.nlogo
 1
 NIL
 HORIZONTAL
 
 SLIDER
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 669
 485
 841
 518
-=======
-532
-475
-704
-508
->>>>>>> origin/master:Cocoma2016.nlogo
 d-frequence-tir
 d-frequence-tir
 0
@@ -1227,7 +1112,6 @@ SWITCH
 605
 show-intentions
 show-intentions
-<<<<<<< HEAD:projet_cocoma/Cocoma2016.nlogo
 0
 1
 -1000
@@ -1241,41 +1125,6 @@ c-vision
 c-vision
 0
 50
-=======
-1
-1
--1000
-
-TEXTBOX
-721
-247
-871
-265
-Convois
-12
-0.0
-1
-
-TEXTBOX
-13
-497
-163
-515
-BDI
-12
-0.0
-1
-
-SLIDER
-723
-324
-895
-357
-c-vision
-c-vision
-5
-10
->>>>>>> origin/master:Cocoma2016.nlogo
 7
 1
 1
