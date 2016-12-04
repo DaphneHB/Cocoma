@@ -322,7 +322,8 @@ end
 to go-cars
     
     
-  ask convois[ 
+  ask convois[
+    ;maj-map-zones
     if ( pv < c-life / 3 and leader? = false)
     [ split]
     if not any? my-out-convoi-links  
@@ -358,3 +359,55 @@ to modif-chef [qui]
   
   
 end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;; ZONES ENNEMIES ;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Permet de mettre Ã  jour le zones ennemies enregistres
+to maj-map-zones
+  ;; tant qu'on n'a pas inspectÃ© tous les patches dans la distance attendue
+  ;;;; on inspecte tous les patches sur une distance
+  let cpt 1
+  let angle 360 ; on verifie toujours tout autour
+  let cases-visitees []
+  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a Ã©tÃ© vu plus tot (liste)
+  let angles-impossibles []
+  ;; on avance en augmentant le rayon de verification
+  while [cpt <= c-vision] [
+    ; on teste pour angle/2 Ã  gauche (donc -angle/2) et angle/2 Ã  gauche
+    let ss-cpt (0 - (angle / 2))
+    ;; on verifie dans l'angle de 7 en 7 (estimation arbitraire)
+    while [ss-cpt <= angle / 2] [
+      ; si l'angle a Ã©tÃ© scellÃ©
+      if (not member? ss-cpt angles-impossibles)
+      [
+      let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
+      ifelse (member? patch-au-loin cases-visitees)
+        [set cases-visitees lput patch-au-loin cases-visitees]
+        [
+          ;; s'il y a un obstacle, on n'Ã©tudie pas la case et on la scelle pour la suite
+          ; ie un 
+          ifelse ([obstacle?] of patch-au-loin = true)
+          [
+            ;print "angle scellÃ©"
+            set angles-impossibles lput ss-cpt angles-impossibles]
+          [
+            let ennemies-on-patch ennemies-on patch-au-loin
+            if (any? ennemies-on-patch) [
+              ; s'il y a un ennemi sur le patch, on le note comme zone ennemie
+              ask patch-au-loin [ ask patches in-radius ray-zone-ennemy with [pzcor = solAlt] [
+                set zone-ennemies ray-zone-ennemy ; e-vision
+              ]
+              ]
+            ]
+            ; [set heading -1 * ss-cpt]]
+          ]
+        ]
+      ]
+      set ss-cpt ss-cpt + 7 ; increment de 7 choisi arbitrairement
+    ]
+    set cpt cpt + 1
+  ]
+end
+

@@ -99,8 +99,8 @@ to go-drones1
           ifelse (but = 0)[
           
           
-          let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision [distance-nowrap myself]
-          let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) [distance-nowrap myself]
+          let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = mapAlt] [distance-nowrap myself]
+          let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) with [pzcor = mapAlt] [distance-nowrap myself]
           ifelse ((nearest-ennemy != nobody) and  ( nearest-convoi != nobody ))[
             if (nearest-ennemy != nobody)[
               set color blue
@@ -174,7 +174,7 @@ to follow-convois
   let v1 voiture1
   let v2 voiture2
 
-  let nearest-convoi one-of convois in-radius-nowrap d-vision with [[who] of self >= v1 and [who] of self <= v2 ]
+  let nearest-convoi one-of convois in-radius-nowrap d-vision with [[who] of self >= v1 and [who] of self <= v2]
   ;let nearest-convoi one-of convois in-radius-nowrap d-vision with [to-protect? = true]
   
   ; Calcule de l'angle avec la cible
@@ -436,8 +436,6 @@ to modif-protection [voit1 voit2]
   set voiture1 voit1
   set voiture2 voit2
 end
-
-
 
 
 

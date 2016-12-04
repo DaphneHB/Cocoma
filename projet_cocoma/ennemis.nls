@@ -31,8 +31,9 @@ to go-ennemies
   ask ennemies [
     if (pv > 0)[
     ;;
-      let nearest-convoi min-one-of convois in-radius-nowrap e-vision [distance-nowrap myself]
-      let nearest-drone min-one-of drones in-radius-nowrap e-vision [distance-nowrap myself]
+      let nearest-convoi detect-convoi e-vision
+      ;let nearest-convoi min-one-of convois in-radius-nowrap e-vision [distance-nowrap myself]
+      let nearest-drone min-one-of drones in-radius-nowrap e-vision with [pzcor > solAlt and pzcor < max-pzcor] [distance-nowrap myself]
       
       ifelse ((nearest-convoi != nobody) or (nearest-drone != nobody))[
         set color blue
@@ -55,7 +56,7 @@ end
 
 to attack-convoi [nearest]
   set heading towards nearest
-  ifelse (distance nearest <= e-dist-tir)[
+  ifelse (distance-nowrap nearest <= e-dist-tir)[
     set color yellow
     ifelse (freq-tir = 0) [
       face nearest
@@ -81,35 +82,46 @@ end
 
 ;;; Renvoie le plus proche convoi dans un rayon de distance, sur un angle de angle
 ; on ne considere que avec une rotation totale ou avec une vision a 180
-to-report detect-convoi [angle dist]
-  let cpt 0
-  while [cpt < dist] [
+to-report detect-convoi [dist]
+  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue
+  ;;;; on inspecte tous les patches sur une distance pour un angle donné
+  let cpt 1
+  let angle 360 ; on verifie toujours tout autour
+  let cases-visitees []
+  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
+  let angles-impossibles []
+  ;; on avance en augmentant le rayon de verification
+  while [cpt <= dist] [
+    ; on teste pour angle/2 à gauche (donc -angle/2) et angle/2 à gauche
+    let ss-cpt (0 - (angle / 2))
+    ;; on verifie dans l'angle de 5 en 5 (estimation arbitraire)
+    while [ss-cpt <= angle / 2] [
+      ; si l'angle a été scellé
+      if (not member? ss-cpt angles-impossibles)
+      [
+        let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
+        ifelse (member? patch-au-loin cases-visitees)
+        [set cases-visitees lput patch-au-loin cases-visitees]
+        [
+          ;; on verifie les obstacles sur cette case pour choisir de sceller cet angle
+          ifelse ([obstacle?] of patch-au-loin = true)
+          [
+            ;print "angle scellé"
+            set angles-impossibles lput ss-cpt angles-impossibles]
+          [
+            let convois-on-patch convois-on patch-au-loin
+            if (any? convois-on-patch) [
+              ;;; on verifie si le chemin ne comporte pas d'obstacles
+              ;  set heading ss-cpt
+              ;  ifelse (not detect-obstacle-path cpt)[
+              report one-of convois-on-patch]
+            ; [set heading -1 * ss-cpt]]
+          ]
+        ]
+      ]
+      set ss-cpt ss-cpt + 7 ; increment de 7 choisi arbitrairement
+    ]
     set cpt cpt + 1
-    if ([obstacle?] of patch-ahead cpt = true)
-    [report nobody]
-    let convois-on-patch convois-on patch-ahead cpt
-    if (any? convois-on-patch)
-    [report one-of convois-on-patch]
   ]
   report nobody
-  ;let xcoord xcor
-  ;let ycoord ycor
-  ;let nearest-convoi-patch nobody
-  ; avec une vision de 180 ou moins
-  ;if (angle >= 180)
-  ;[set nearest-convoi-patch min-one-of patches with
-  ;    [pxcor < xcoord + dist and pxcor > xcoord - dist and pycor > ycoord and pycor < ycoord + dist and any? convois-here]
-  ;    [distance-nowrap myself]
-  ;]
-  ;; avec une vision de plus de 180
-  ;if (angle < 180)
-  ;[set nearest-convoi-patch min-one-of patches with
-  ;    [pxcor < xcoord + dist and pxcor > xcoord - dist and pycor > ycoord - dist and pycor < ycoord + dist and any? convois-here]
-  ;    [distance-nowrap myself]
-  ;]
-  ;if nearest-convoi-patch = nobody
-  ;[report nobody]
-  ;let nearest-convoi min-one-of convois-on nearest-convoi-patch [distance myself]
-  ;print nearest-convoi
-  ;report nearest-convoi
 end
