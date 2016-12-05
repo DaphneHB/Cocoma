@@ -64,7 +64,8 @@ convois-own[incoming-queue
   chef
 ]
 
-drones-own [incoming-queue
+drones-own [cible
+  incoming-queue
   freq-tir
   speed maxdir ;speed + angle de rotation max
   leader?
@@ -156,7 +157,7 @@ to go
   go-ennemies
   go-drones
   bullets-fire
-  update-patches
+ ; update-patches
   tick
 end
 
@@ -747,7 +748,7 @@ d-frequence-tir
 d-frequence-tir
 0
 10
-9
+5
 1
 1
 NIL

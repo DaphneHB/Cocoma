@@ -106,7 +106,7 @@ to go-drones1
             ifelse ((nearest-ennemy != nobody) and  ( nearest-convoi != nobody ))[
               if (nearest-ennemy != nobody)[
                 set color blue
-                attack-ennemi nearest-ennemy]
+                attack-ennemi ]
             ]
             [follow-convois]
             
@@ -269,13 +269,14 @@ end
 
 
 
-to attack-ennemi [nearest]
-  if (nearest != nobody)[
-  set heading towards nearest
+to attack-ennemi
+  
+  if (cible != nobody)[
+  set heading towards cible
   ifelse (any? ennemies in-radius-nowrap d-dist-tir) [
     set color yellow
     ifelse (freq-tir = 0) [
-      face nearest
+      face cible
       hatch-bullets 1 [
         set num  2
         set speed 0.2 * simu-speed
@@ -446,8 +447,11 @@ end
 
 
 to rejoindre
-  
-  ifelse (patch-here != patch [pxcor] of but [pycor] of but 5  or not member? patch-here [neighbors4] of patch [pxcor] of but [pycor] of but 5) [ move-drone but false false] [ set but 0]
+  let v1 voiture1
+  let v2 voiture2
+  ifelse (not any?  convois in-radius-nowrap d-vision with [who >= v1 and who <= v2] )
+ [ ifelse (patch-here != patch [pxcor] of but [pycor] of but 5  or not member? patch-here [neighbors4] of patch [pxcor] of but [pycor] of but 5) [ move-drone but false false] [ set but 0] ]
+ [ set but 0]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -465,9 +469,24 @@ end
 
 
 to go-drones
+      if( ticks != 0 and ticks mod 100 = 0) [
+        ask drones [modif-protection ([ [who] of item 0 listconvoi] of (item 0 sort convois with [to-protect? = true])) ([who] of item 0 sort convois with [to-protect? = true]) ]
+        
+        let d  (min-one-of  (drones with [returnbase? = false]) [carburant]) 
+        ask drone [who] of d [
+          set returnbase? true
+        add-intention "rejoindre" "arretrejoindre"
+        add-intention "decollage" "arretdecollage"
+        add-intention "transition" "arrettransition"
+        add-intention "atterrissage" "arretatterrissage"
+        add-intention "return-base" "arretreturn-base"
+        ]
+      ]
+  
+  
   
   ask drones [
-    if( ticks != 0 and ticks mod 30 = 0) [
+    if( ticks != 0 and ticks mod 40 = 0) [
       if (carburant < 200 and returnbase? = false) [ 
         set returnbase? true
         add-intention "rejoindre" "arretrejoindre"
@@ -476,11 +495,14 @@ to go-drones
         add-intention "atterrissage" "arretatterrissage"
         add-intention "return-base" "arretreturn-base"
       ]
-      let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt and [zone-ennemies?] of patch-here = true] [distance-nowrap myself]
+     ; let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt and [zone-ennemies?] of patch-here = true] [distance-nowrap myself]
 
-          
-      add-intention "attack-ennemi min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt and [zone-ennemies?] of patch-here = true] [distance-nowrap myself]" "arretattack"
-      
+     if (returnbase? != true)[ 
+       if any? ennemies in-radius-nowrap d-vision [
+       set cible min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt] [distance-nowrap myself]
+      add-intention "attack-ennemi" "arretattack"
+       ]
+     ]
       
     ]
     
@@ -493,8 +515,9 @@ to go-drones
 end
 
 to-report arretattack
-   let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) with [pzcor = solAlt] [distance-nowrap myself]
-  report (nearest-convoi != nobody)
+   let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 1) with [pzcor = solAlt] [distance-nowrap myself]
+  report (cible = nobody or nearest-convoi = nobody or ((ticks - 20) mod 40 = 0 ))
+  ;report false
   
 end
 
