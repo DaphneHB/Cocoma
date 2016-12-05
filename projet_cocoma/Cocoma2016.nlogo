@@ -26,8 +26,7 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
   mission-completed? mission-failed?
   send-interval ; communication period
   is-movie-recording?
-  ray-zone-ennemy
-  maj-time
+  maj-time-glob
 
   list_path
   list_as
@@ -37,10 +36,15 @@ globals [mapAlt solAlt basseAlt hauteAlt ; variables topologiques Z discretise: 
   split?
 ]
 
-patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map? zone-ennemies?; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
+patches-own [obstacle? base? hangar? objectif? bridge? montagne? mur-map?; variables topologiques au niveau mapAlt, permet de definir les patchs praticables et ceux qui sont des obstacles
   as-closed as-heuristic as-prev-pos ; variables temporaires pour calculer les chemins AStar (effaces a chaque calcul de plan)
-  zone-ennemies ; pour définir s'il s'agit d'une zone ennemie,  ie contenant un ennemie dans un rayon de 5 (0: non-ennemie; >0 : enregistrée comme zone-ennemie pour encore X temps ou X est la valeur de la variable)
+  zone-ennemies? ; pour définir s'il s'agit d'une zone ennemie,  ie contenant un ennemi (true ou false)
   ]
+
+; tous les agents ont en commun le type de belief "list-beliefs" qui retourne la liste des beliefs de cet agent
+turtles-own [
+  b-type-commun
+]
 
 convois-own[incoming-queue
   finished? ; Is the goal reached ?
@@ -53,15 +57,18 @@ convois-own[incoming-queue
   pv
   beliefs intentions
   timer-maj
+  listconvoi
+
   but
   chemin
   chef
 ]
 
-drones-own [
+drones-own [incoming-queue
   freq-tir
   speed maxdir ;speed + angle de rotation max
   leader?
+  returnbase?
   carburant
   munitions
   finished?
@@ -130,7 +137,10 @@ to setup
   setup-ennemies
   ; on définit la forme d'une balle (bullet)
   set-default-shape bullets "arrow 3"
-  ;ask patches with [obstacle?] [set pcolor orange]
+
+  ; on initialise le belief par défaut à tous les turtles
+  ask turtles [set b-type-commun "list-beliefs"]
+
   display ; reenable gui display
   reset-ticks
 end
@@ -146,6 +156,7 @@ to go
   go-ennemies
   go-drones
   bullets-fire
+  update-patches
   tick
 end
 
@@ -473,7 +484,7 @@ INPUTBOX
 335
 113
 nb-ennemies
-50
+100
 1
 0
 Number
@@ -502,7 +513,7 @@ e-vision
 e-vision
 1
 25
-9
+10
 1
 1
 NIL
@@ -775,7 +786,7 @@ SWITCH
 605
 show-intentions
 show-intentions
-0
+1
 1
 -1000
 
@@ -786,9 +797,9 @@ SLIDER
 356
 c-vision
 c-vision
-0
-50
-50
+1
+5
+5
 1
 1
 NIL
@@ -828,7 +839,7 @@ BUTTON
 338
 412
 protect convoi important
-ask drones [modif-protection ([chef] of (item 0 sort convois with [to-protect? = true])) ([who] of item 0 sort convois with [to-protect? = true]) ]
+ask drones [modif-protection ([ [who] of item 0 listconvoi] of (item 0 sort convois with [to-protect? = true])) ([who] of item 0 sort convois with [to-protect? = true]) ]
 NIL
 1
 T

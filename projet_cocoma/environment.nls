@@ -3,6 +3,10 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 to update-patches
-  ask patches with [zone-ennemies > 0 and pzcor = solAlt] [set pcolor orange set zone-ennemies zone-ennemies - 1]
-  ask patches with [zone-ennemies = 0 and pzcor = mapAlt] [set pcolor black]
+  ask patches with [zone-ennemies? = true and pzcor = mapAlt] [set pcolor orange]
+  ask patches with [zone-ennemies? = false and pzcor = mapAlt] [set pcolor black]
+end
+
+to reset-zone-ennemies
+  ask patches with [pzcor = mapAlt] [set zone-ennemies? false]
 end

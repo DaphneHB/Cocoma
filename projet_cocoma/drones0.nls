@@ -8,7 +8,6 @@ to setup-drones
   create-drones nb-drones
   
   reinitialize-drones ; TODO
-  ask drones[set-intent]
 end
 
 
@@ -19,7 +18,7 @@ to reinitialize-drones
     let base-max-pxcor max [pxcor] of (patches with [base? and pzcor = mapAlt])
     let base-min-pycor min [pycor] of (patches with [base? and pzcor = mapAlt])
     let base-max-pycor max [pycor] of (patches with [base? and pzcor = mapAlt])
-    
+
     ask drones
     [
       ; Init apparence NetLogo
@@ -32,9 +31,9 @@ to reinitialize-drones
       set atterrissage? false
       set maxdir 10 * simu-speed
       ; Init des structures BDI
-      set incoming-queue [] ; Do not change
-      
-                            ; Init vars convois
+      ;set incoming-queue [] ; Do not change
+
+      ; Init vars convois
       set speed 0.1 * simu-speed * d-speed
       ;set maxdir 10 * simu-speed * d-speed
       set heading 0
@@ -43,13 +42,12 @@ to reinitialize-drones
       set finished? false
       set leader? false
       set dead? false
-      set freq-tir 0 ; initialisée à 0 pour pouvoir tirer la premiere balle
-                     ; Visu
-                     ;set label who ; display the car names
-      set carburant 1000
-      set beliefs []
-      set intentions []
-      set returnbase? false
+    set freq-tir 0 ; initialisée à 0 pour pouvoir tirer la premiere balle
+                   ; Visu
+                   ;set label who ; display the car names
+    set carburant 1000
+    set beliefs []
+    set intentions []
     ]
     
     ; get the id of the first one
@@ -61,7 +59,7 @@ to reinitialize-drones
       set color orange
       move-to patch base-max-pxcor base-max-pycor 1
     ]
-    
+
     ; deploying the other car
     if nb-drones > 1 [
       ; ask non leader cars
@@ -83,7 +81,7 @@ end
 
 
 to go-drones1
-  ; let lead-conv one-of convois with [leader?]
+ ; let lead-conv one-of convois with [leader?]
   ask drones [
     if (pv > 0)[
       if (decollage? = true and atterrissage? = false)
@@ -99,85 +97,83 @@ to go-drones1
         
         ifelse (carburant > 150 )[
           ifelse (but = 0)[
-            
-            
-            let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt] [distance-nowrap myself]
-            let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) with [pzcor = solAlt] [distance-nowrap myself]
-            ifelse ((nearest-ennemy != nobody) and  ( nearest-convoi != nobody ))[
-              if (nearest-ennemy != nobody)[
-                set color blue
-                attack-ennemi nearest-ennemy]
-            ]
-            [follow-convois]
-            
-            prevenirdronetoconvoi
-            
-          ][ ifelse (patch-here != but) [ move-drone but false false] [ set but 0] ]
+          
+          
+          let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = mapAlt] [distance-nowrap myself]
+          let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) with [pzcor = mapAlt] [distance-nowrap myself]
+          ifelse ((nearest-ennemy != nobody) and  ( nearest-convoi != nobody ))[
+            if (nearest-ennemy != nobody)[
+              set color blue
+              attack-ennemi nearest-ennemy]
+          ]
+          [follow-convois]
+          
+          prevenirdronetoconvoi
+          
+        ][ ifelse (patch-here != but) [ move-drone but false false] [ set but 0] ]
         ]
-        
-        
+          
+          
         [ return-base]
       ]
-      set carburant (carburant - 1)
-    ]
+    set carburant (carburant - 1)
   ]
+    ]
   
 end
 
 
 to decollage
-  set returnbase? false
-  if ((pitch < 30) and (zcor < 5))[
-    set pitch pitch + 10
-  ]
-  if (zcor >= 5)[
-    if (pitch != 0)[
-      set pitch pitch - 10
+
+    if ((pitch < 30) and (zcor < 5))[
+      set pitch pitch + 10
     ]
-  ]
-  fd speed
+    if (zcor >= 5)[
+      if (pitch != 0)[
+        set pitch pitch - 10
+      ]
+    ]
+    fd speed
   
   if (pitch = 0)[
     set decollage? false
-    
   ]
   ;else set decollage false
 end
 
 to atterrissage
-  
-  ifelse (  patch-here != patch 3 1 1) 
-    [ face patch 3 1 1
-      fd speed]
-    [ set decollage? true]
-  
-  
+
+    ifelse (  patch-here != patch 3 1 1) 
+      [ face patch 3 1 1
+        fd speed]
+      [ set decollage? true]
+
+
 end
 
 to transition
   ifelse (patch-here != patch 4 0 1)
-  [
-    move-drone patch 4 0 1 false false]
+ [
+   move-drone patch 4 0 1 false false]
   
   
-  [ 
-    face patch 4 10 1
-    
-    set pitch 0
-    set roll 0
-    set carburant 1000
-    set atterrissage? false]
+ [ 
+  face patch 4 10 1
+  set atterrissage? false
+  set pitch 0
+  set roll 0
+  set carburant 1000]
 end
 
 
 
 to follow-convois
-  
-  ;let nearest-convoi min-one-of convois in-radius-nowrap d-vision [distance myself]
+
+ ;let nearest-convoi min-one-of convois in-radius-nowrap d-vision [distance myself]
   ;let nearest-convoi one-of convois in-radius-nowrap d-vision 
   let v1 voiture1
   let v2 voiture2
-  
+
   let nearest-convoi one-of convois in-radius-nowrap d-vision with [[who] of self >= v1 and [who] of self <= v2]
   ;let nearest-convoi one-of convois in-radius-nowrap d-vision with [to-protect? = true]
   
@@ -219,38 +215,37 @@ to follow-convois
     ]
     [
       set color red
-      ;set to-follow nobody
+  ;set to-follow nobody
       random-walk-drone
     ]
   ]
   [
     set color red
-    ;set to-follow nobody
+  ;set to-follow nobody
     random-walk-drone
-    
-  ] 
   
+] 
+
 end
 
 to return-base
   prevoir
   
   
-  ifelse (patch-here != patch 3 20 5  or member? patch-here [neighbors4] of patch 3 20 5)
+  ifelse (patch-here != patch 3 20 5)
   [
-    ; face patch 2 20 5
-    set roll 0
-    ; set pitch 0
-    ; fd speed
-    move-drone patch 3 20 5 false false
-    
+ ; face patch 2 20 5
+  set roll 0
+ ; set pitch 0
+ ; fd speed
+  move-drone patch 3 20 5 false false
+  
   ]
-  [
+  [set atterrissage? true
     set roll 0
     face patch-at 0 -1 0
     set pitch 0
-    set atterrissage? true
-  ]
+    ]
 end
 
 
@@ -270,7 +265,6 @@ end
 
 
 to attack-ennemi [nearest]
-  if (nearest != nobody)[
   set heading towards nearest
   ifelse (any? ennemies in-radius-nowrap d-dist-tir) [
     set color yellow
@@ -288,7 +282,6 @@ to attack-ennemi [nearest]
     [set freq-tir (freq-tir - 1)]
   ]
   [fd speed ]
-  ]
   ;[if not detect-obstacle [fd speed]] ; ils vont a l'encontre du convoi qu'ils on vu
 end
 
@@ -349,25 +342,25 @@ end
 
 
 to test_drone
-  foreach sort-on [who] convois[
-    ask ? [
-      set list_as_tmp []
-      set chemin []
-      if (not dead? and leader?)[
-        set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
-        test2_drone
-      ]
-    ]
-  ] 
-end 
-
-
-to test2_drone
-  ifelse (  any? in-link-neighbors) [    
-    ask in-link-neighbors [ 
+foreach sort-on [who] convois[
+  ask ? [
+    set list_as_tmp []
+    set chemin []
+    if (not dead? and leader?)[
       set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
       test2_drone
     ]
+  ]
+] 
+end 
+    
+    
+to test2_drone
+  ifelse (  any? in-link-neighbors) [    
+     ask in-link-neighbors [ 
+       set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
+       test2_drone
+     ]
   ]
   [set list_as lput list_as_tmp list_as]       
 end   
@@ -375,11 +368,11 @@ end
 
 to move_drone
   ask drones with [ not finished? and not dead?] [ ; Tant qu'on n'a pas atteint le but
-                                                   ;move-convoi-naive ; deplacement naif sans AStar
+                                                    ;move-convoi-naive ; deplacement naif sans AStar
     
-                                                   ; Recupere le plan AStar
-    
-    
+                                                    ; Recupere le plan AStar
+   
+   
     if (not empty? chemin) [
       ; Deplacement par waypoints: on se deplace jusqu'au prochain patch du chemin jusqu'à l'atteindre
       let next-patch first chemin
@@ -400,7 +393,7 @@ end
 
 to move-drone [goal slowdown? cortege?]
   ;show (word "ici:" patch-here " goal:" goal)
-  
+
   ; Calcule de l'angle avec la cible
   let headingFlag heading
   ifelse cortege?
@@ -418,10 +411,10 @@ to move-drone [goal slowdown? cortege?]
       set dirCorrection maxdir * -1
     ]
   ]
-  
+
   ; On tourne
   rt dirCorrection
-  
+
   ; Limite de vitesse pour les voitures-cortege (pour pas qu'elles ne rentrent dans la voiture leader)
   let tmp-speed speed
   if slowdown? [
@@ -432,7 +425,7 @@ to move-drone [goal slowdown? cortege?]
       set tmp-speed 0
     ]
   ]
-  
+
   ; Deplacement!
   set pitch 0 ; make sure there's no pitch ever, else the car will disappear in the ground
   fd tmp-speed ; Avance
@@ -445,155 +438,37 @@ to modif-protection [voit1 voit2]
 end
 
 
-to rejoindre
-  
-  ifelse (patch-here != patch [pxcor] of but [pycor] of but 5  or not member? patch-here [neighbors4] of patch [pxcor] of but [pycor] of but 5) [ move-drone but false false] [ set but 0]
-end
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;BDI TEST;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-to set-intent
-  ; if (ticks = 0)[
-  add-intention "random-move" "false"
-  add-intention "follow-convois" "arretfollow-convois"
-  add-intention "decollage" "arretdecollage"
-  ;  ]
+to T
+  if (ticks = 0)[
+  add-intention "follow-convois" "bla"
+  add-intention "decollage" "blabla"
+  ]
 end
-
 
 
 to go-drones
-  
   ask drones [
-    if( ticks != 0 and ticks mod 30 = 0) [
-      if (carburant < 200 and returnbase? = false) [ 
-        set returnbase? true
-        add-intention "rejoindre" "arretrejoindre"
-        add-intention "decollage" "arretdecollage"
-        add-intention "transition" "arrettransition"
-        add-intention "atterrissage" "arretatterrissage"
-        add-intention "return-base" "arretreturn-base"
-      ]
-      let nearest-ennemy min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt and [zone-ennemies?] of patch-here = true] [distance-nowrap myself]
+  
+  T
 
-          
-      add-intention "attack-ennemi min-one-of ennemies in-radius-nowrap d-vision with [pzcor = solAlt and [zone-ennemies?] of patch-here = true] [distance-nowrap myself]" "arretattack"
-      
-      
-    ]
-    
-    
-    ;traite-msg
-    execute-intentions
-    set carburant (carburant - 1)
+  execute-intentions
+  
   ]
   
 end
 
-to-report arretattack
-   let nearest-convoi min-one-of convois in-radius-nowrap (d-vision / 3 * 2) with [pzcor = solAlt] [distance-nowrap myself]
-  report (nearest-convoi != nobody)
-  
+to-report blabla
+  report not decollage?
 end
 
-to-report arretdecollage
-  report decollage? = false
-end
-
-to-report arretatterrissage
-  report atterrissage? = true and decollage? = true
+to-report bla
+  report decollage?
 end
 
 
-to-report arretfollow-convois
-  report (decollage? and atterrissage?)
-end
-
-to-report arrettransition
-  report decollage? = true and atterrissage? = false
-end
-
-to-report arretrejoindre
-  report but = 0 or member? patch-here [neighbors4] of patch [pxcor] of but [pycor] of but 5
-end
-
-
-to-report arretreturn-base
-  report (patch-here = patch 3 20 5 or member? patch-here [neighbors4] of patch 3 20 5 and atterrissage? = true)
-end
-
-
-to set-but [p]
-  set but p
-end
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;; DRONE LEADER ;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-to traite-msg
-  foreach (incoming-queue)[
-    if ( get-performative ? = "listconvoi")
-    [
-     set-belief-listconvoi ?]
-  ]
-  
-  
-  
-  
-end
-
-to-report update-liste-convois [liste tmp]
-  foreach (liste) [set tmp remove ? tmp]
-  report tmp
-end
-
-to set-belief-listconvoi [msg]
-  let liste []
-  let listconvoid []
-  let listconvoidtmp []
-  set liste get-content msg
-
-  print "in belief listconvoi"
-  ifelse (exist-beliefs-of-type "listconvoi" ) [
-    print "exist listconvoi"
-
-    set listconvoid belief-content get-belief "listconvoi"
-    set listconvoidtmp listconvoid
-    foreach (listconvoidtmp) [     
-      if ( ([who] of first liste >= [who] of first ?) and ([who] of first liste <= [who] of last ?))
-      [ 
-        let tmp []
-        set tmp ?
-        print "POINT INTERRO"
-        print  ?
-        set listconvoid lput liste listconvoid
-        
-        set tmp update-liste-convois liste tmp
-        print (word "point d'interro" ? " temp " tmp)
-        if (not empty? tmp)[
-          set listconvoid lput tmp listconvoid]
-        set listconvoid remove ? listconvoid
-       ; set ? tmp
-       print "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
-        print listconvoid
-        
-      ]
-    ]
-    
-    add-belief create-belief "listconvoi" listconvoid
-  ]
-  [
-    print "notexist listconvoi"
-    let l []
-    set l lput liste l
-    print l
-    add-belief create-belief "listconvoi" l]
-  
-  
-end

@@ -159,10 +159,38 @@ to-report add [msg field value]
   report add-field msg field value
 end
 
+; pour que le sender envoie toutes ces croyances de type b-type à un receiver
+to send-beliefs-to-one [b-type sender receiver]
+  ; si on a des croyance sur ce sujet, on les envoie au receiver
+  if (exist-beliefs-of-type b-type)[
+    let message create-message b-type
+    set message add-sender sender message
+    foreach (beliefs-of-type b-type) [
+      set message add-content (item 1 ?) message
+    ]
+    set message add-receiver receiver message
+    send message
+  ]
+end
 
-
-
-
+; pour récuperer les messages de la boite au lettre concernant un des beliefs type de la liste des types possibles de l'agent
+; les messages autres sont jeté
+; où b-types est la liste des string des différents types de beliefs attendus
+; En contexte de l'agent
+to receive-beliefs
+  ; on récupère les types de beliefs possibles pour l'agent courant
+  let b-types (map [item 1 ?] beliefs-of-type b-type-commun)
+  ; pour chaque msg reçu
+  foreach (incoming-queue) [
+    ; s'il s'agit d'un msg avec comme performative une connue dans la liste b-types
+   if (member? get-performative ? b-types) [
+     ; on récupere le contenu et on l'ajoute a ses croyances
+     add-belief-agent (get-performative ?) (get-content ?)
+   ]
+   ; on le retire de la boite aux lettres
+   remove-msg
+  ]
+end
 
 
 to prevenirdronetoconvoi  
@@ -202,7 +230,3 @@ to prevenirdronetodrone
       [ set message add-receiver  ? message ]
     send message ]
 end
-
-to sendpath
-end
-  

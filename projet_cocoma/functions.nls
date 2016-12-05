@@ -84,7 +84,7 @@ to-report plan-astar [start goal longpath?] ; start et goal sont des patchs
       [
         ; Expansion du meilleur candidat (expansion = on ajoute les voisins dans la liste open, des noeuds a visiter)
         ;ask [neighbors6-nowrap with [ as-closed = 0 and not obstacle? and not base?]] of pos [ ; On ne visite que les voisins au meme niveau (astar en 2D, mais on peut etendre ici au 3D facilement!) ET on ne l'a pas deja visite (as-closed = 0) ET il n'y a pas d'obstacle sur ce patch
-         ask [neighbors6-nowrap with [pzcor = start-pzcor and as-closed = 0 and not obstacle? ]] of pos [ ; On ne visite que les voisins au meme niveau (astar en 2D, mais on peut etendre ici au 3D facilement!) ET on ne l'a pas deja visite (as-closed = 0) ET il n'y a pas d'obstacle sur ce patch
+         ask [neighbors6-nowrap with [pzcor = start-pzcor and as-closed = 0 and not obstacle? and not zone-ennemies?]] of pos [ ; On ne visite que les voisins au meme niveau (astar en 2D, mais on peut etendre ici au 3D facilement!) ET on ne l'a pas deja visite (as-closed = 0) ET il n'y a pas d'obstacle sur ce patch
 
           ; Calcul du score f de ce voisin
           let g2 g + as-cost
@@ -195,3 +195,37 @@ to turn-away
   rt random 10 - 5
 end
 
+; Retire tous les belifs de type b-type de l'agent
+;;; Fonction appelé dans un turtle's context
+to remove-beliefs-type [b-type]
+  ; si on a aucun belief pour ce type
+  if not exist-beliefs-of-type b-type
+  [stop]
+  ; sinon on supprime tous les beliefs
+  foreach (beliefs-of-type b-type) [
+    remove-belief ?
+  ]
+end
+
+
+; Mixe les connaissances locales et reçues par un suiveur ou un drone concernant le type b-type
+; où autres-beliefs-content est la liste des contenus des beliefs pour le type b-type reçues par un agent d'un autre agent
+; connaissance à ajouter aux siennes
+; En contexte d'agent, appliquée par un leader
+to merge-beliefs [autres-beliefs-content b-type]
+  foreach (autres-beliefs-content) [
+    add-belief create-belief b-type ?
+  ]
+end
+
+; ajoute un type de belief à l'agent-set breed-to
+to add-beliefs-type-breed [breed-to b-type]
+  ask breed-to [
+    add-belief create-belief b-type-commun b-type
+  ]
+end
+
+; En contexte d'agent
+to add-belief-agent [b-type value]
+  add-belief create-belief b-type value
+end

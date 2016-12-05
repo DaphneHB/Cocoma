@@ -5,7 +5,6 @@
 
 ; Initial parameters
 to setup-globals
-  set ray-zone-ennemy 5
   set mapAlt 0
   set solAlt 1
   set basseAlt (floor max-pzcor / 3 * 2 - 1)
@@ -24,7 +23,7 @@ to setup-globals
   set is-movie-recording? false
   set list_as []
   
-  set maj-time 10
+  set maj-time-glob 50
 
 end
 
@@ -39,7 +38,7 @@ end
 ;environment definition
 to setup-env
   ;ask patches with [pzcor = mapAlt] [set pcolor orange]
-  ask patches [set obstacle? false set base? false set hangar? false set objectif? false set bridge? false set montagne? false]
+  ask patches [set obstacle? false set base? false set hangar? false set objectif? false set bridge? false set montagne? false set zone-ennemies? false]
 
   ; Herbe
   ask patches with [pzcor = mapAlt][set pcolor green + (random-float 2) - 1]
@@ -127,7 +126,7 @@ to setup-env
 
   ; Objectif
   ask one-of patches with[obstacle? = false and base? = false and hangar? = false and pxcor >= (max-pxcor / 2) and pycor >= (max-pycor / 2) and pzcor = mapAlt][set objectif? true ask patch-at 0 0 mapAlt [set pcolor yellow
-      set butfinal patch pxcor pycor MapAlt]]
+      set butfinal patch pxcor pycor mapAlt]]
 
   ; Hangar (la ou les voitures du convois demarrent)
   ask patches with[pzcor = mapAlt and pxcor >= 5 and pxcor < 7 and pycor >= 0 and pycor < 12][set pcolor 8 set hangar? true set obstacle? false]

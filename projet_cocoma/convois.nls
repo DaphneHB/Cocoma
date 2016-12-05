@@ -3,10 +3,6 @@
 ;  CONVOIS
 ;-----------
 
-
-
-
-
 to setup-convois
   if nb-cars > 0 [
     ; creation des voitures du convoi et cortege
@@ -14,6 +10,7 @@ to setup-convois
     reinitialize-convois
     calcule_astar
     set calcule? false
+    ask turtle 0 [set-listconvoi]
   ]
 end
 
@@ -24,7 +21,7 @@ to reinitialize-convois
     let hangar-max-pxcor max [pxcor] of (patches with [hangar? and pzcor = mapAlt])
     let hangar-min-pycor min [pycor] of (patches with [hangar? and pzcor = mapAlt])
     let hangar-max-pycor max [pycor] of (patches with [hangar? and pzcor = mapAlt])
-
+    
     ask convois
     [
       set but butfinal
@@ -33,10 +30,11 @@ to reinitialize-convois
       ; Init apparence NetLogo
       set shape "car"
       set color magenta
-
+      
       ; Init des structures BDI
       set incoming-queue [] ; Do not change
-
+      set beliefs []
+      
       ; Init vars convois
       set speed 0.05 * simu-speed
       set maxdir 10 * simu-speed
@@ -48,28 +46,30 @@ to reinitialize-convois
       set to-protect? false
       set genlongpath? false
       set dead? false
-
+      set timer-maj 0
+      set listconvoi []
+      
       ; Visu
       set label who ; display the car names
     ]
-
+    
     ; get the id of the first one
     let first-car min [who] of convois
     let last-car max [who] of convois
-
+    
     ; configure the leader
     ask convoi first-car [
       set leader? true
       set color orange
       move-to patch hangar-max-pxcor hangar-max-pycor 1
     ]
-
+    
     ; configure the last car as the critical one
     ask convoi last-car [
       set to-protect? true
       set color yellow
     ]
-
+    
     ; deploying the other car
     if nb-cars > 1 [
       ; ask non leader cars
@@ -78,30 +78,27 @@ to reinitialize-convois
         ; we create a link between them
         create-convoi-link-to turtle (who - 1)
         ;if who >= 4 and who mod 2 = 0 [ create-convoi-link-with turtle (who - 3) ]
-
+        
         ; deploying
         ifelse (who - 1) mod 2 = 0 [ set xcor hangar-min-pxcor ] [ set xcor hangar-max-pxcor ] ; a gauche ou a droite selon le nombre (pair ou impair respectivement)
         set ycor hangar-max-pycor - (floor (who / 2) / (nb-cars / 2) * (hangar-max-pycor - hangar-min-pycor)) ; d'une rangee de plus en plus basse toutes les deux voitures
         set zcor solAlt
       ]
-
+      
     ]
   ]
   set mission-completed? false
   set mission-failed? false
-
+  
   set as-cost 1 ; cost to move
   set as-path n-values nb-cars [[]] ; max one path for each car
-
+  
 end
 
 to move
   ask convois with [ not finished? and not dead?] [ ; Tant qu'on n'a pas atteint le but
                                                     ;move-convoi-naive ; deplacement naif sans AStar
-    
-                                                    ; Recupere le plan AStar
-   
-   
+                                                    ; Recupere le plan AStar 
     if (not empty? chemin) [
       ; Deplacement par waypoints: on se deplace jusqu'au prochain patch du chemin jusqu'à l'atteindre
       let next-patch first chemin
@@ -140,56 +137,57 @@ to calcule_astar
       ]
       ask convoi (item 0 ?) [
         set chemin fchemin
-        print "JE SUIS"
-        print item 0 ?
-        print chemin
-        print but
-        print "!!!!!!!!!!!!!!!!!"
+        ;print "JE SUIS"
+        ;print item 0 ?
+        ;print chemin
+        ;print but
+        ;print "!!!!!!!!!!!!!!!!!"
       ]
     ]
   ]
   set calcule? false
+  reset-zone-ennemies
 end
 
 
 to test
-foreach sort-on [who] convois[
-  ask ? [
-    set list_as_tmp []
-    set chemin []
-    if (not dead? and leader?)[
+  foreach sort-on [who] convois[
+    ask ? [
+      set list_as_tmp []
+      set chemin []
+      if (not dead? and leader?)[
+        set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
+        test2
+      ]
+    ]
+  ] 
+end 
+
+
+to test2
+  ifelse (  any? in-link-neighbors) [    
+    ask in-link-neighbors [ 
       set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
       test2
     ]
   ]
-] 
-end 
-    
-    
-to test2
-  ifelse (  any? in-link-neighbors) [    
-     ask in-link-neighbors [ 
-       set list_as_tmp lput (list who pxcor pycor but) list_as_tmp
-       test2
-     ]
-  ]
   [set list_as lput list_as_tmp list_as]       
 end   
-     
+
 
 to convois-think
-
+  
   if nb-cars > 0 [
-
+    
     let first-car min [who] of convois
-
+    
     ; Calcul du plan AStar pour chaque leader si necessaire
     foreach sort-on [who] turtle-set convois with [leader? and not finished? and not dead?] [
       let id ([who] of ?) - first-car
       ; Recalcule le chemin si nécessaire (par exemple au début de la simulation ou quand le convoi se sépare)
       ; Note: on est oblige de le faire en dehors du ask sinon on ne peut pas acceder a tous les patchs
       if empty? as-path or length as-path < (id + 1) or empty? (item id as-path) [ ; s'il n'y a pas encore de chemin du tout, ou pas de chemin pour cette voiture, on cree un plan AStar
-        ; Cree le plan AStar (attention a ca que le patch start soit au niveau ou il y a les obstacles, ici pzcor = mapAlt pour les obstacles)
+                                                                                   ; Cree le plan AStar (attention a ca que le patch start soit au niveau ou il y a les obstacles, ici pzcor = mapAlt pour les obstacles)
         let start-patch min-one-of (patches with [pzcor = mapAlt and not obstacle?]) [distance ?] ; on s'assure de choisir comme patch de depart un patch libre sans obstacle, sinon quand on split un convoi il se peut qu'il soit sur un obstacle et qu'il ne puisse jamais generer de chemin
         let new-path plan-astar ([patch-at 0 0 (pzcor * -1)] of start-patch) (one-of patches with [objectif?]) ([genlongpath?] of ?)
         ; S'il n'y a pas de plan et qu'on a essayé de trouver un long chemin, on attend la prochaine iteration et on reessaie mais avec un plan court
@@ -206,19 +204,19 @@ to convois-think
     ]
     
     
-
+    
     ; Deplacement des leaders sur le chemin AStar
     ask convois with [leader? and not finished? and not dead?] [ ; Tant qu'on n'a pas atteint le but
-      ;move-convoi-naive ; deplacement naif sans AStar
-
-      ; Recupere le plan AStar
+                                                                 ;move-convoi-naive ; deplacement naif sans AStar
+      
+                                                                 ; Recupere le plan AStar
       let my-as-path item (who - first-car) as-path
       if not empty? my-as-path [
         ; Deplacement par waypoints: on se deplace jusqu'au prochain patch du chemin jusqu'à l'atteindre
         let next-patch first my-as-path
         let zz pzcor
         set next-patch [patch-at 0 0 (zz - pzcor)] of next-patch ; mise a niveau de pzcor au cas ou le chemin a ete calculé sur un autre plan
-        ; Deplacement vers le prochain waypoint
+                                                                 ; Deplacement vers le prochain waypoint
         if next-patch != patch-here [move-convoi next-patch false false]
         ; Si on a atteint ce patch, on le supprime de la liste, et on va donc continuer vers le prochain patch du chemin
         if patch-here = next-patch [
@@ -227,12 +225,12 @@ to convois-think
           if debug [ show (word "Waypoint atteint: " patch-here ", prochain: " next-patch ) ]
         ]
       ]
-
+      
       ; Critere d'arret: on est a cote de l'objectif
       check-convoi-finished
-
+      
     ]
-
+    
     ; Deplacement des voitures-cortege: elles ne font que suivre la voiture devant eux (avec laquelle elles sont liées)
     ask convois with [not leader? and not finished? and not dead?] [
       ifelse any? my-out-convoi-links [
@@ -256,7 +254,7 @@ to check-convoi-finished
   ; Critere d'arret: on est a cote de l'objectif
   ; Note: on veut etre a cote de l'objectif et pas directement dessus car on est une voiture, donc il se peut qu'on tourne indefiniment autour sans arriver directement a arriver dessus a cause de la limite d'angle de rotation.
   if any? [neighbors6-nowrap with [objectif?]] of patch-here [ ; On ne bouge pas si on est arrive au but!
- 
+    
                                                                ; Fini pour le leader
     set finished? true
     ; Fini aussi pour toutes les voitures-cortege qui suivent ce leader
@@ -281,7 +279,7 @@ end
 ; Maintien egalement une petite distance afin de ne pas "rentrer" dans la voiture de devant
 to move-convoi [goal slowdown? cortege?]
   ;show (word "ici:" patch-here " goal:" goal)
-
+  
   ; Calcule de l'angle avec la cible
   let headingFlag heading
   ifelse cortege?
@@ -299,10 +297,10 @@ to move-convoi [goal slowdown? cortege?]
       set dirCorrection maxdir * -1
     ]
   ]
-
+  
   ; On tourne
   rt dirCorrection
-
+  
   ; Limite de vitesse pour les voitures-cortege (pour pas qu'elles ne rentrent dans la voiture leader)
   let tmp-speed speed
   if slowdown? [
@@ -313,17 +311,26 @@ to move-convoi [goal slowdown? cortege?]
       set tmp-speed 0
     ]
   ]
-
+  
   ; Deplacement!
   set pitch 0 ; make sure there's no pitch ever, else the car will disappear in the ground
   fd tmp-speed ; Avance
 end
 
 to go-cars
-    
-    
+  
+  if (ticks mod 30 = 0) [
+  direquiavecmoi]
+  
   ask convois[
-    ;maj-map-zones
+    ; si on doit vérifier les zones ennemies
+    ifelse (timer-maj = 0) [
+      ; on réinitialise le compte
+      set timer-maj maj-time-glob
+      ; on revérifie les emplacements ennemis
+      maj-beliefs-zones-ennemies
+    ] [set timer-maj timer-maj - 1]
+    ; gestion du split
     if ( pv < c-life / 3 and leader? = false)
     [ split]
     if not any? my-out-convoi-links  
@@ -337,7 +344,17 @@ to go-cars
   
   ask convois with [ empty? chemin and leader? = true and finished? = false ]
   [ set but butfinal
-    set calcule? true]
+    set calcule? true
+  ]
+  
+  ; a la fin tous le monde vérifie ses messages
+  ask convois [receive-beliefs]
+  
+  ask convois with [leader? = true and timer-maj = maj-time-glob] [; on met à jour la carte des ennemies
+    maj-map-zone-ennemies
+    if (re-check-chemin)
+    [set calcule? true]
+  ]
   
 end
 
@@ -346,68 +363,140 @@ to split
   set but patch ((pxcor + random ([pxcor] of but - pxcor)) * 1.1)  ((pycor + random ([pycor] of but - pycor)) * 1.1) MapAlt
   ; set but patch 50 10 0
   set calcule? true
-  modif-chef who
+  set-listconvoi
 end
 
-to modif-chef [qui]
-  set chef qui
+to set-listconvoi
+  set listconvoi set-listconvoirec listconvoi
+  set-l listconvoi  
+end
+
+
+to-report set-listconvoirec [l]
+  set l lput self l
   if (  any? in-link-neighbors) [    
-     ask in-link-neighbors [ 
-       modif-chef qui
-     ]
-  ]  
-  
+    ask in-link-neighbors [ 
+      set l set-listconvoirec l
+    ] 
+  ]
+  report l
+end
+
+to set-l [l]
+  if (  any? in-link-neighbors) [    
+    ask in-link-neighbors [ 
+      set listconvoi l
+      set-l l
+    ]
+  ]
   
 end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;; CONVOI LEADER ;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to direquiavecmoi
+  ask convois with [leader? = true] [
+    
+    ;direquiavecmoirec
+    let message create-message "listconvoi"
+    set message add-sender who message
+    set message add-content listconvoi message
+    
+    foreach  (sort (drones in-radius-nowrap c-vision with [leader? = true]))
+    [set message add-receiver ? message ]
+
+    send message
+  ]
+  
+end
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;; ZONES ENNEMIES ;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Permet de mettre Ã  jour le zones ennemies enregistres
-to maj-map-zones
-  ;; tant qu'on n'a pas inspectÃ© tous les patches dans la distance attendue
+;;; Permet de mettre à  jour le zones ennemies enregistres dans les croyances locales
+to maj-beliefs-zones-ennemies
+  ; on ajoute (ou re-write) que les convois ont pour beliefs les "ennemies-at"
+  add-beliefs-type-breed convois "ennemies-at"
+  ; on réinitialise toutes les croyances sur les positions ennemies
+  remove-beliefs-type "ennemies-at"
+  ; on réinitialise la variable zone-ennemies des patch
+  reset-zone-ennemies
+  ;; tant qu'on n'a pas inspecté tous les patches dans la distance attendue
   ;;;; on inspecte tous les patches sur une distance
   let cpt 1
   let angle 360 ; on verifie toujours tout autour
   let cases-visitees []
-  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a Ã©tÃ© vu plus tot (liste)
+  ;; on enregistre tous les angles a eliminer parce qu'un obstacle y a été vu plus tot (liste)
   let angles-impossibles []
   ;; on avance en augmentant le rayon de verification
   while [cpt <= c-vision] [
-    ; on teste pour angle/2 Ã  gauche (donc -angle/2) et angle/2 Ã  gauche
+    ; on teste pour angle/2 à  gauche (donc -angle/2) et angle/2 à  gauche
     let ss-cpt (0 - (angle / 2))
     ;; on verifie dans l'angle de 7 en 7 (estimation arbitraire)
     while [ss-cpt <= angle / 2] [
-      ; si l'angle a Ã©tÃ© scellÃ©
+      ; si l'angle a été scellé
       if (not member? ss-cpt angles-impossibles)
-      [
-      let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
-      ifelse (member? patch-au-loin cases-visitees)
-        [set cases-visitees lput patch-au-loin cases-visitees]
         [
-          ;; s'il y a un obstacle, on n'Ã©tudie pas la case et on la scelle pour la suite
-          ; ie un 
-          ifelse ([obstacle?] of patch-au-loin = true)
+          let patch-au-loin patch-at-heading-and-distance ss-cpt cpt
+          ifelse (member? patch-au-loin cases-visitees)
+          [set cases-visitees lput patch-au-loin cases-visitees]
           [
-            ;print "angle scellÃ©"
-            set angles-impossibles lput ss-cpt angles-impossibles]
-          [
-            let ennemies-on-patch ennemies-on patch-au-loin
-            if (any? ennemies-on-patch) [
-              ; s'il y a un ennemi sur le patch, on le note comme zone ennemie
-              ask patch-au-loin [ ask patches in-radius ray-zone-ennemy with [pzcor = solAlt] [
-                set zone-ennemies ray-zone-ennemy ; e-vision
-              ]
+            ;; s'il y a un obstacle, on n'Ã©tudie pas la case et on la scelle pour la suite
+            ; plus précisément s'il s'agit d'un mur délimitant le terrain ou une montagne
+            ifelse ([montagne?] of patch-au-loin = true or [mur-map?] of patch-au-loin = true ) ; [obstacle?] of patch-au-loin = true)
+            [
+              ;print "angle scellÃ©"
+              set angles-impossibles lput ss-cpt angles-impossibles]
+            [
+              let ennemies-on-patch ennemies-on patch-au-loin
+              if (any? ennemies-on-patch) [
+                ; avec les beliefs de type "ennemies-at" de la forme tuple de (x y)
+                add-belief create-belief "ennemies-at" (list ([pxcor] of patch-au-loin )([pycor] of patch-au-loin))
               ]
             ]
-            ; [set heading -1 * ss-cpt]]
           ]
         ]
-      ]
       set ss-cpt ss-cpt + 7 ; increment de 7 choisi arbitrairement
     ]
     set cpt cpt + 1
   ]
+  ; si on n'est pas le leader on envoie les beliefs calculés au leader
+  if (not leader?)
+  [send-loc-beliefs "ennemies-at"]
 end
 
+; modifie la map (l'espace d'un instant) pour marquer les zones ennemies connues par le leader et ses suiveurs pour le calcul du A*
+; applique la connaissance "ennemies-at"
+; fonction uniquement appelée par le leader
+to maj-map-zone-ennemies
+  ; pour chaque croyance d'une position ennemie à moi leader
+  foreach (beliefs-of-type "ennemies-at") [
+    ; s'il y a un ennemi sur le patch, on le note comme zone ennemie
+    let coords (item 1 ?)
+    ;let patch-ennemi patch (item 0 coords) (item 1 coords) mapAlt
+    ask patch (item 0 coords) (item 1 coords) mapAlt [ask patches in-radius-nowrap (c-vision - 1) with [pzcor = mapAlt] 
+      [ set zone-ennemies? true] 
+    ]
+  ]
+  end
+
+; chaque convoi envoie ces croyances au leader
+to send-loc-beliefs [b-type]
+  send-beliefs-to-one b-type self (item 0 listconvoi)
+end
+
+; revérifie sil y a des ennemis sur le trajet
+; et donc renvoie true s'il faut recalculer le chemin
+; En contexte d'agent leader
+to-report re-check-chemin
+  ; pour chaque patch du chemin de l'agent
+  foreach (chemin) [
+    if ([zone-ennemies?] of ? = true)
+    [report true]
+  ]
+  report false
+end
